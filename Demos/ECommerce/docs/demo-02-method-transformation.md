@@ -236,7 +236,7 @@ private OrderResult ValidateOrder(Order order, Customer customer)
 
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json extract-method '{
-    "solutionPath": "Demos/ECommerce/ECommerce.sln",
+    "solutionPath": "Demos/ECommerce/ECommerce.slnx",
     "filePath": "Demos/ECommerce/ECommerce/OrderProcessor.cs",
     "selectionRange": "47:9-68:100",
     "methodName": "ValidateOrder"
@@ -245,7 +245,7 @@ dotnet run --project RefactorMCP.ConsoleApp -- --json extract-method '{
 
 | Parameter        | Value                                          | Purpose                                           |
 |------------------|------------------------------------------------|---------------------------------------------------|
-| `solutionPath`   | `Demos/ECommerce/ECommerce.sln`                | Solution context for Roslyn semantic analysis      |
+| `solutionPath`   | `Demos/ECommerce/ECommerce.slnx`                | Solution context for Roslyn semantic analysis      |
 | `filePath`       | `Demos/ECommerce/ECommerce/OrderProcessor.cs`  | File containing the method to refactor             |
 | `selectionRange` | `47:9-68:100`                                  | Lines 47-68 -- the validation block inside `ProcessOrder` |
 | `methodName`     | `ValidateOrder`                                | Name for the newly extracted method                |
@@ -353,7 +353,7 @@ In `PricingEngine.cs`, the method definition is removed entirely:
 
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json inline-method '{
-    "solutionPath": "Demos/ECommerce/ECommerce.sln",
+    "solutionPath": "Demos/ECommerce/ECommerce.slnx",
     "filePath": "Demos/ECommerce/ECommerce/PricingEngine.cs",
     "methodName": "GetBaseMultiplier"
 }'
@@ -361,7 +361,7 @@ dotnet run --project RefactorMCP.ConsoleApp -- --json inline-method '{
 
 | Parameter      | Value                                         | Purpose                                           |
 |----------------|-----------------------------------------------|---------------------------------------------------|
-| `solutionPath` | `Demos/ECommerce/ECommerce.sln`               | Solution context for Roslyn semantic analysis      |
+| `solutionPath` | `Demos/ECommerce/ECommerce.slnx`               | Solution context for Roslyn semantic analysis      |
 | `filePath`     | `Demos/ECommerce/ECommerce/PricingEngine.cs`  | File containing the method to inline               |
 | `methodName`   | `GetBaseMultiplier`                           | The method whose body will replace its call sites  |
 

@@ -157,7 +157,7 @@ services.AddScoped<IOrderService>(sp =>
 ### Tool Usage
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json extract-decorator '{
-    "solutionPath": "MyApp.sln",
+    "solutionPath": "MyApp.slnx",
     "filePath": "Services/OrderService.cs",
     "methodName": "CreateOrderAsync",
     "decoratorClassName": "LoggingOrderServiceDecorator"

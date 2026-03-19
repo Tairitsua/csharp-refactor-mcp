@@ -148,14 +148,14 @@ in the solution ranked by size. Large classes are often the ones most in need of
 
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json list-class-lengths \
-  '{"solutionPath":"Demos/ECommerce/ECommerce.sln"}'
+  '{"solutionPath":"Demos/ECommerce/ECommerce.slnx"}'
 ```
 
 ### Expected Output
 
 ```json
 {
-  "solutionPath": "Demos/ECommerce/ECommerce.sln",
+  "solutionPath": "Demos/ECommerce/ECommerce.slnx",
   "totalClasses": 18,
   "classes": [
     { "className": "OrderProcessor",       "filePath": "ECommerce/OrderProcessor.cs",       "lineCount": 161, "methodCount": 3 },

@@ -10,7 +10,7 @@ public static class MakeStaticThenMoveTool
 {
     [McpServerTool, Description("Convert an instance method to static and move it to another class (preferred for large C# file refactoring)")]
     public static async Task<string> MakeStaticThenMove(
-        [Description("Absolute path to the solution file (.sln)")] string solutionPath,
+        [Description("Absolute path to the solution file (.sln or .slnx)")] string solutionPath,
         [Description("Path to the C# file containing the method")] string filePath,
         [Description("Name of the method to convert and move")] string methodName,
         [Description("Name of the target class")] string targetClass,

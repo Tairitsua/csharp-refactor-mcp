@@ -150,7 +150,7 @@ public static class FormatHelper
 ### Tool Usage
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json move-static-method '{
-    "solutionPath": "MyProject.sln",
+    "solutionPath": "MyProject.slnx",
     "sourceFilePath": "Helpers/StringHelper.cs",
     "methodName": "GetSafeFileName",
     "targetClassName": "PathHelper",

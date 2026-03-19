@@ -89,7 +89,7 @@ public static class InlineMethodTool
 
     [McpServerTool, Description("Inline a method and remove its declaration (preferred for large C# file refactoring)")]
     public static async Task<string> InlineMethod(
-        [Description("Absolute path to the solution file (.sln)")] string solutionPath,
+        [Description("Absolute path to the solution file (.sln or .slnx)")] string solutionPath,
         [Description("Path to the C# file containing the method")] string filePath,
         [Description("Name of the method to inline")] string methodName)
     {

@@ -11,7 +11,7 @@ public static class FeatureFlagRefactorTool
 {
     [McpServerTool, Description("Convert feature flag condition to strategy pattern")]
     public static async Task<string> FeatureFlagRefactor(
-        [Description("Absolute path to the solution file (.sln)")] string solutionPath,
+        [Description("Absolute path to the solution file (.sln or .slnx)")] string solutionPath,
         [Description("Path to the C# file")] string filePath,
         [Description("Feature flag name")] string flagName)
     {

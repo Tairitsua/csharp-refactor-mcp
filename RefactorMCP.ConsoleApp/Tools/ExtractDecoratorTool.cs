@@ -17,7 +17,7 @@ public static class ExtractDecoratorTool
 {
     [McpServerTool, Description("Create a simple decorator class for a method")]
     public static async Task<string> ExtractDecorator(
-        [Description("Absolute path to the solution file (.sln)")] string solutionPath,
+        [Description("Absolute path to the solution file (.sln or .slnx)")] string solutionPath,
         [Description("Path to the C# file")] string filePath,
         [Description("Name of the class containing the method")] string className,
         [Description("Name of the method to decorate")] string methodName)

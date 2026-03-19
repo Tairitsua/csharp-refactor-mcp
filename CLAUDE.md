@@ -21,7 +21,7 @@ RefactorMCP is a Model Context Protocol server that exposes Roslyn-based refacto
   - Tests organized by feature area
 
 ### Key Technologies
-- .NET 9.0
+- .NET 10.0
 - Roslyn (Microsoft.CodeAnalysis) for C# code analysis and transformation
 - xUnit for testing
 - Model Context Protocol for server functionality
@@ -54,7 +54,7 @@ dotnet run --project RefactorMCP.ConsoleApp
 dotnet run --project RefactorMCP.ConsoleApp -- --json <tool-name> '<json-params>'
 
 # Example: Load solution
-dotnet run --project RefactorMCP.ConsoleApp -- --json load-solution '{"solutionPath":"./RefactorMCP.sln"}'
+dotnet run --project RefactorMCP.ConsoleApp -- --json load-solution '{"solutionPath":"./RefactorMCP.slnx"}'
 ```
 
 ### Format Code

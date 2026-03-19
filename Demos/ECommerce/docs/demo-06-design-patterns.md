@@ -106,7 +106,7 @@ public class NotificationService
 
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json extract-interface '{
-    "solutionPath": "./Demos/ECommerce/ECommerce.sln",
+    "solutionPath": "./Demos/ECommerce/ECommerce.slnx",
     "filePath": "./Demos/ECommerce/ECommerce/NotificationService.cs",
     "className": "NotificationService",
     "memberList": "SendOrderConfirmation,SendShippingNotification,SendPaymentFailedNotification,SendTierUpgradeNotification",
@@ -202,7 +202,7 @@ There is no way to intercept, log, or time the call without editing `Notificatio
 
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json extract-decorator '{
-    "solutionPath": "./Demos/ECommerce/ECommerce.sln",
+    "solutionPath": "./Demos/ECommerce/ECommerce.slnx",
     "filePath": "./Demos/ECommerce/ECommerce/NotificationService.cs",
     "className": "NotificationService",
     "methodName": "SendOrderConfirmation"
@@ -348,7 +348,7 @@ void CancelHold(string holdId);                       // takes a hold ID, not pr
 
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json create-adapter '{
-    "solutionPath": "./Demos/ECommerce/ECommerce.sln",
+    "solutionPath": "./Demos/ECommerce/ECommerce.slnx",
     "filePath": "./Demos/ECommerce/ECommerce/InventoryManager.cs",
     "className": "InventoryManager",
     "methodName": "ReserveStock",
@@ -503,7 +503,7 @@ public bool ReserveStock(string productId, int q)
 
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json add-observer '{
-    "solutionPath": "./Demos/ECommerce/ECommerce.sln",
+    "solutionPath": "./Demos/ECommerce/ECommerce.slnx",
     "filePath": "./Demos/ECommerce/ECommerce/InventoryManager.cs",
     "className": "InventoryManager",
     "methodName": "ReserveStock",
@@ -696,7 +696,7 @@ public class PricingEngine
 
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json feature-flag-refactor '{
-    "solutionPath": "./Demos/ECommerce/ECommerce.sln",
+    "solutionPath": "./Demos/ECommerce/ECommerce.slnx",
     "filePath": "./Demos/ECommerce/ECommerce/PricingEngine.cs",
     "flagName": "EnableNewPricingEngine"
 }'
@@ -855,6 +855,6 @@ public class PricingEngine
 
 ### Prerequisites
 
-- .NET 9.0 SDK
+- .NET 10.0 SDK
 - RefactorMCP built: `dotnet build` from the repository root
-- ECommerce demo project: `dotnet build ./Demos/ECommerce/ECommerce.sln`
+- ECommerce demo project: `dotnet build ./Demos/ECommerce/ECommerce.slnx`

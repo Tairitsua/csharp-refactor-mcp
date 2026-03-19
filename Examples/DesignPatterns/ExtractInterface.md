@@ -150,7 +150,7 @@ public async Task ProcessWeatherData_FormatsCorrectly()
 ### Tool Usage
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json extract-interface '{
-    "solutionPath": "MyApp.sln",
+    "solutionPath": "MyApp.slnx",
     "filePath": "Services/WeatherService.cs",
     "interfaceName": "IWeatherService",
     "memberNames": ["GetCurrentWeatherAsync", "GetForecastAsync", "GetAlertsAsync"]

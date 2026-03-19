@@ -7,6 +7,11 @@ namespace RefactorMCP.Tests;
 public static class TestUtilities
 {
     private static readonly string[] SolutionFileNames = ["RefactorMCP.slnx", "RefactorMCP.sln"];
+    private static readonly string[] ExampleCodeRelativePaths =
+    [
+        Path.Combine("RefactorMCP.Tests", "Tools", "ExampleCode.cs"),
+        Path.Combine("RefactorMCP.Tests", "ExampleCode.cs")
+    ];
 
     public static string GetSolutionPath()
     {
@@ -31,6 +36,21 @@ public static class TestUtilities
         await File.WriteAllTextAsync(filePath, content);
     }
 
+    public static string NormalizeLineEndings(string text) => text.Replace("\r\n", "\n");
+
+    public static string GetExampleCodePath()
+    {
+        var root = Path.GetDirectoryName(GetSolutionPath())!;
+        foreach (var relativePath in ExampleCodeRelativePaths)
+        {
+            var fullPath = Path.Combine(root, relativePath);
+            if (File.Exists(fullPath))
+                return fullPath;
+        }
+
+        return Path.Combine(root, ExampleCodeRelativePaths[0]);
+    }
+
     public static string GetSampleCodeForExtractMethod() => """
 using System;
 public class TestClass
@@ -49,13 +69,13 @@ public class TestClass
 """;
 
     public static string GetSampleCodeForIntroduceField() =>
-        File.ReadAllText(Path.Combine(Path.GetDirectoryName(GetSolutionPath())!, "RefactorMCP.Tests", "ExampleCode.cs"));
+        File.ReadAllText(GetExampleCodePath());
 
     public static string GetSampleCodeForIntroduceVariable() =>
-        File.ReadAllText(Path.Combine(Path.GetDirectoryName(GetSolutionPath())!, "RefactorMCP.Tests", "ExampleCode.cs"));
+        File.ReadAllText(GetExampleCodePath());
 
     public static string GetSampleCodeForMakeFieldReadonly() =>
-        File.ReadAllText(Path.Combine(Path.GetDirectoryName(GetSolutionPath())!, "RefactorMCP.Tests", "ExampleCode.cs"));
+        File.ReadAllText(GetExampleCodePath());
 
     public static string GetSampleCodeForMakeFieldReadonlyNoInit() => """
 using System;
@@ -66,13 +86,13 @@ public class TestClass
 """;
 
     public static string GetSampleCodeForTransformSetter() =>
-        File.ReadAllText(Path.Combine(Path.GetDirectoryName(GetSolutionPath())!, "RefactorMCP.Tests", "ExampleCode.cs"));
+        File.ReadAllText(GetExampleCodePath());
 
     public static string GetSampleCodeForConvertToStaticInstance() =>
-        File.ReadAllText(Path.Combine(Path.GetDirectoryName(GetSolutionPath())!, "RefactorMCP.Tests", "ExampleCode.cs"));
+        File.ReadAllText(GetExampleCodePath());
 
     public static string GetSampleCodeForMoveStaticMethod() =>
-        File.ReadAllText(Path.Combine(Path.GetDirectoryName(GetSolutionPath())!, "RefactorMCP.Tests", "ExampleCode.cs"));
+        File.ReadAllText(GetExampleCodePath());
 
     public static string GetSampleCodeForMoveStaticMethodWithUsings() => """
 using System;
@@ -90,13 +110,13 @@ public class UtilClass { }
 """;
 
     public static string GetSampleCodeForMoveInstanceMethod() =>
-        File.ReadAllText(Path.Combine(Path.GetDirectoryName(GetSolutionPath())!, "RefactorMCP.Tests", "ExampleCode.cs"));
+        File.ReadAllText(GetExampleCodePath());
 
     public static string GetSampleCodeForConvertToExtension() =>
-        File.ReadAllText(Path.Combine(Path.GetDirectoryName(GetSolutionPath())!, "RefactorMCP.Tests", "ExampleCode.cs"));
+        File.ReadAllText(GetExampleCodePath());
 
     public static string GetSampleCodeForSafeDelete() =>
-        File.ReadAllText(Path.Combine(Path.GetDirectoryName(GetSolutionPath())!, "RefactorMCP.Tests", "ExampleCode.cs"));
+        File.ReadAllText(GetExampleCodePath());
 
     public static string GetSampleCodeForMoveInstanceMethodWithDependencies() => """
 using System;
@@ -175,10 +195,10 @@ public class CleanupSample
 """;
 
     public static string GetSampleCodeForMoveTypeToFile() =>
-        File.ReadAllText(Path.Combine(Path.GetDirectoryName(GetSolutionPath())!, "RefactorMCP.Tests", "ExampleCode.cs"));
+        File.ReadAllText(GetExampleCodePath());
 
     public static string GetSampleCodeForRenameSymbol() =>
-        File.ReadAllText(Path.Combine(Path.GetDirectoryName(GetSolutionPath())!, "RefactorMCP.Tests", "ExampleCode.cs"));
+        File.ReadAllText(GetExampleCodePath());
 
     public static string GetSampleCodeForExtractInterface() => """
 public class Person

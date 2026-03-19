@@ -161,14 +161,14 @@ Lists all classes in the solution ordered by line count, helping identify classe
 ### Example Usage
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json class-length-metrics '{
-    "solutionPath": "MyApp.sln"
+    "solutionPath": "MyApp.slnx"
 }'
 ```
 
 ### Sample Output
 ```json
 {
-  "solution": "MyApp.sln",
+  "solution": "MyApp.slnx",
   "classes": [
     { "name": "OrderService", "file": "Services/OrderService.cs", "lines": 542, "members": 47 },
     { "name": "UserManager", "file": "Identity/UserManager.cs", "lines": 389, "members": 35 },
@@ -275,7 +275,7 @@ Renames a symbol (class, method, field, property, variable, etc.) across the ent
 ### Example Usage
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json rename-symbol '{
-    "solutionPath": "MyApp.sln",
+    "solutionPath": "MyApp.slnx",
     "filePath": "Services/OrderService.cs",
     "symbolName": "ProcessOrder",
     "newName": "ProcessOrderAsync"
@@ -379,7 +379,7 @@ Converts feature flag conditional logic into the Strategy pattern, making the co
 ### Example Usage
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json feature-flag-refactor '{
-    "solutionPath": "MyApp.sln",
+    "solutionPath": "MyApp.slnx",
     "filePath": "Services/CheckoutService.cs",
     "featureFlagName": "UseNewCheckoutFlow"
 }'

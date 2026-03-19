@@ -14,7 +14,7 @@ public static class ConstructorInjectionTool
 
     [McpServerTool, Description("Convert method parameters to constructor injection (preferred for large C# file refactoring)")]
     public static async Task<string> ConvertToConstructorInjection(
-        [Description("Absolute path to the solution file (.sln)")] string solutionPath,
+        [Description("Absolute path to the solution file (.sln or .slnx)")] string solutionPath,
         [Description("Path to the C# file")] string filePath,
         [Description("Method and parameter pairs in the format Method:Parameter;...")] MethodParameterPair[] methodParameters,
         [Description("Use a public property instead of a private field")] bool useProperty = false)

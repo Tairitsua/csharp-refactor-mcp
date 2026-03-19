@@ -171,7 +171,7 @@ public class PricingCalculator
 ### Tool Usage
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json move-instance-method '{
-    "solutionPath": "MyProject.sln",
+    "solutionPath": "MyProject.slnx",
     "sourceFilePath": "Services/OrderService.cs",
     "methodNames": ["CalculateSubtotal", "CalculateTax", "CalculateShipping"],
     "targetClassName": "PricingCalculator",

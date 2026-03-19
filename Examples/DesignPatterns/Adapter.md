@@ -177,7 +177,7 @@ services.AddSingleton<IPaymentGateway>(sp =>
 ### Tool Usage
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json create-adapter '{
-    "solutionPath": "MyApp.sln",
+    "solutionPath": "MyApp.slnx",
     "filePath": "ThirdParty/StripePaymentProcessor.cs",
     "methodName": "CreateCharge",
     "adapterClassName": "StripePaymentGatewayAdapter"

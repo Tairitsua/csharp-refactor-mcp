@@ -16,7 +16,7 @@ public static class CreateAdapterTool
 {
     [McpServerTool, Description("Generate a simple adapter class that delegates to an existing method")]
     public static async Task<string> CreateAdapter(
-        [Description("Absolute path to the solution file (.sln)")] string solutionPath,
+        [Description("Absolute path to the solution file (.sln or .slnx)")] string solutionPath,
         [Description("Path to the C# file")] string filePath,
         [Description("Name of the class containing the method")] string className,
         [Description("Name of the method to adapt")] string methodName,

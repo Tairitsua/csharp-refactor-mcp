@@ -47,7 +47,7 @@ public static class MoveMethodTool
         "Leaves a delegating method in the original class to preserve the interface." +
         "The target class will be automatically created if it doesn't exist.")]
     public static async Task<string> MoveStaticMethod(
-        [Description("Absolute path to the solution file (.sln)")] string solutionPath,
+        [Description("Absolute path to the solution file (.sln or .slnx)")] string solutionPath,
         [Description("Path to the C# file containing the method")] string filePath,
         [Description("Name of the static method to move")] string methodName,
         [Description("Name of the target class")] string targetClass,
@@ -229,7 +229,7 @@ public static class MoveMethodTool
         "Each original method is replaced with a wrapper that calls the moved version to maintain the public API." +
         "The target class will be automatically created if it doesn't exist.")]
     public static async Task<string> MoveInstanceMethod(
-        [Description("Absolute path to the solution file (.sln)")] string solutionPath,
+        [Description("Absolute path to the solution file (.sln or .slnx)")] string solutionPath,
         [Description("Path to the C# file containing the method")] string filePath,
         [Description("Name of the source class containing the method")] string sourceClass,
         [Description("Names of the methods to move (required)")] string[] methodNames,

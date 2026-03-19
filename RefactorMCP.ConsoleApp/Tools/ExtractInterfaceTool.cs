@@ -12,7 +12,7 @@ public static class ExtractInterfaceTool
 {
     [McpServerTool, Description("Extract a simple interface from a class")]
     public static async Task<string> ExtractInterface(
-        [Description("Absolute path to the solution file (.sln)")] string solutionPath,
+        [Description("Absolute path to the solution file (.sln or .slnx)")] string solutionPath,
         [Description("Path to the C# file containing the class")] string filePath,
         [Description("Name of the class to extract from")] string className,
         [Description("Comma separated list of member names to include")] string memberList,

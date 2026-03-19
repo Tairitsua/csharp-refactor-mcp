@@ -100,13 +100,13 @@ public class UserService
 ```bash
 # Each field deletion is safe-checked independently
 dotnet run --project RefactorMCP.ConsoleApp -- --json safe-delete-field '{
-    "solutionPath": "MyApp.sln",
+    "solutionPath": "MyApp.slnx",
     "filePath": "Services/UserService.cs",
     "fieldName": "_legacyAuth"
 }'
 
 dotnet run --project RefactorMCP.ConsoleApp -- --json safe-delete-field '{
-    "solutionPath": "MyApp.sln",
+    "solutionPath": "MyApp.slnx",
     "filePath": "Services/UserService.cs",
     "fieldName": "_userCache"
 }'
@@ -222,7 +222,7 @@ public class OrderCalculator
 ### Tool Usage
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json safe-delete-method '{
-    "solutionPath": "MyApp.sln",
+    "solutionPath": "MyApp.slnx",
     "filePath": "Services/OrderCalculator.cs",
     "methodName": "CalculateTotalLegacy"
 }'
@@ -355,7 +355,7 @@ await notificationService.SendShippingNotificationAsync(
 ### Tool Usage
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json safe-delete-parameter '{
-    "solutionPath": "MyApp.sln",
+    "solutionPath": "MyApp.slnx",
     "filePath": "Services/NotificationService.cs",
     "methodName": "SendOrderConfirmationAsync",
     "parameterName": "priority"
@@ -462,7 +462,7 @@ Each safe-delete operation:
 ```bash
 # Example: Trying to delete a method that's still called
 dotnet run --project RefactorMCP.ConsoleApp -- --json safe-delete-method '{
-    "solutionPath": "MyApp.sln",
+    "solutionPath": "MyApp.slnx",
     "filePath": "Services/Calculator.cs",
     "methodName": "CalculateTax"
 }'

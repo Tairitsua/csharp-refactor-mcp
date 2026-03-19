@@ -8,7 +8,7 @@ namespace RefactorMCP.Tests.Tools;
 public class AnalyzeRefactoringOpportunitiesTests : IDisposable
 {
     private static readonly string SolutionPath = TestHelpers.GetSolutionPath();
-    private static readonly string ExampleFilePath = Path.Combine(Path.GetDirectoryName(SolutionPath)!, "RefactorMCP.Tests", "ExampleCode.cs");
+    private static readonly string ExampleFilePath = TestUtilities.GetExampleCodePath();
     private readonly string _originalDir = Directory.GetCurrentDirectory();
 
     public void Dispose()

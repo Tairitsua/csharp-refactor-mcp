@@ -93,7 +93,7 @@ public class AuditLogger
 
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json move-instance-method '{
-  "solutionPath": "./Demos/ECommerce/ECommerce.sln",
+  "solutionPath": "./Demos/ECommerce/ECommerce.slnx",
   "sourceFilePath": "ECommerce/OrderProcessor.cs",
   "methodName": "FormatAuditLogEntry",
   "sourceClassName": "OrderProcessor",
@@ -266,7 +266,7 @@ public class TableFormatter
 
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json move-static-method '{
-  "solutionPath": "./Demos/ECommerce/ECommerce.sln",
+  "solutionPath": "./Demos/ECommerce/ECommerce.slnx",
   "sourceFilePath": "ECommerce/ReportGenerator.cs",
   "methodName": "FormatAsTable",
   "sourceClassName": "ReportGenerator",
@@ -463,7 +463,7 @@ public class NotificationTemplate
 
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json move-to-separate-file '{
-  "solutionPath": "./Demos/ECommerce/ECommerce.sln",
+  "solutionPath": "./Demos/ECommerce/ECommerce.slnx",
   "sourceFilePath": "ECommerce/NotificationService.cs",
   "typeName": "NotificationTemplate"
 }'

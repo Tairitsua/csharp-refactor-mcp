@@ -108,7 +108,7 @@ public decimal CalculateLineTotal(OrderItem item, Customer customer, bool isHoli
 
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json introduce-variable '{
-    "solutionPath": "Demos/ECommerce/ECommerce.sln",
+    "solutionPath": "Demos/ECommerce/ECommerce.slnx",
     "filePath": "Demos/ECommerce/ECommerce/PricingEngine.cs",
     "selectionRange": "29:55-29:198",
     "variableName": "tierDiscount"
@@ -117,7 +117,7 @@ dotnet run --project RefactorMCP.ConsoleApp -- --json introduce-variable '{
 
 | Parameter        | Value                                         | Purpose                                                       |
 |------------------|-----------------------------------------------|---------------------------------------------------------------|
-| `solutionPath`   | `Demos/ECommerce/ECommerce.sln`               | Solution context for Roslyn semantic analysis                  |
+| `solutionPath`   | `Demos/ECommerce/ECommerce.slnx`               | Solution context for Roslyn semantic analysis                  |
 | `filePath`       | `Demos/ECommerce/ECommerce/PricingEngine.cs`  | File containing the expression to extract                      |
 | `selectionRange` | `29:55-29:198`                                | The tier-discount ternary: `customer.Tier == ... : 0m`         |
 | `variableName`   | `tierDiscount`                                | Name for the newly introduced local variable                   |
@@ -269,7 +269,7 @@ provide the tax rate explicitly, making the dependency visible and configurable.
 
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json introduce-parameter '{
-    "solutionPath": "Demos/ECommerce/ECommerce.sln",
+    "solutionPath": "Demos/ECommerce/ECommerce.slnx",
     "filePath": "Demos/ECommerce/ECommerce/OrderProcessor.cs",
     "methodName": "ProcessOrder",
     "selectionRange": "100:40-100:45",
@@ -279,7 +279,7 @@ dotnet run --project RefactorMCP.ConsoleApp -- --json introduce-parameter '{
 
 | Parameter        | Value                                          | Purpose                                                     |
 |------------------|------------------------------------------------|-------------------------------------------------------------|
-| `solutionPath`   | `Demos/ECommerce/ECommerce.sln`                | Solution context for Roslyn semantic analysis                |
+| `solutionPath`   | `Demos/ECommerce/ECommerce.slnx`                | Solution context for Roslyn semantic analysis                |
 | `filePath`       | `Demos/ECommerce/ECommerce/OrderProcessor.cs`  | File containing the hardcoded literal                        |
 | `methodName`     | `ProcessOrder`                                 | Method to which the new parameter will be added              |
 | `selectionRange` | `100:40-100:45`                                | The literal `0.08m` on line 100                              |
@@ -453,7 +453,7 @@ public class PricingEngine
 
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json introduce-field '{
-    "solutionPath": "Demos/ECommerce/ECommerce.sln",
+    "solutionPath": "Demos/ECommerce/ECommerce.slnx",
     "filePath": "Demos/ECommerce/ECommerce/PricingEngine.cs",
     "selectionRange": "121:73-121:78",
     "fieldName": "_maxDiscountCap",
@@ -463,7 +463,7 @@ dotnet run --project RefactorMCP.ConsoleApp -- --json introduce-field '{
 
 | Parameter         | Value                                         | Purpose                                                    |
 |-------------------|-----------------------------------------------|------------------------------------------------------------|
-| `solutionPath`    | `Demos/ECommerce/ECommerce.sln`               | Solution context for Roslyn semantic analysis               |
+| `solutionPath`    | `Demos/ECommerce/ECommerce.slnx`               | Solution context for Roslyn semantic analysis               |
 | `filePath`        | `Demos/ECommerce/ECommerce/PricingEngine.cs`  | File containing the magic number                            |
 | `selectionRange`  | `121:73-121:78`                               | The literal `0.25m` inside `Math.Min(..., 0.25m)`           |
 | `fieldName`       | `_maxDiscountCap`                             | Name for the newly introduced field                         |

@@ -17,7 +17,7 @@ public static class AddObserverTool
 {
     [McpServerTool, Description("Introduce a simple observer event and raise it in a method")]
     public static async Task<string> AddObserver(
-        [Description("Absolute path to the solution file (.sln)")] string solutionPath,
+        [Description("Absolute path to the solution file (.sln or .slnx)")] string solutionPath,
         [Description("Path to the C# file")] string filePath,
         [Description("Name of the class containing the method")] string className,
         [Description("Name of the method to raise the event from")] string methodName,

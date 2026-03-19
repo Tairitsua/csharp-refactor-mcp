@@ -375,13 +375,13 @@ namespace ECommerce.Domain.Models
 ```bash
 # Move each type one at a time
 dotnet run --project RefactorMCP.ConsoleApp -- --json move-type-to-file '{
-    "solutionPath": "ECommerce.sln",
+    "solutionPath": "ECommerce.slnx",
     "sourceFilePath": "Domain/Models.cs",
     "typeName": "Order"
 }'
 
 dotnet run --project RefactorMCP.ConsoleApp -- --json move-type-to-file '{
-    "solutionPath": "ECommerce.sln",
+    "solutionPath": "ECommerce.slnx",
     "sourceFilePath": "Domain/Models.cs",
     "typeName": "Customer"
 }'

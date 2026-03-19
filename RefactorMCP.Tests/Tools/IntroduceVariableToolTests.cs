@@ -43,6 +43,6 @@ public class Sample
 
         Assert.Contains("Successfully introduced variable", result);
         var fileContent = await File.ReadAllTextAsync(testFile);
-        Assert.Equal(expectedCode, fileContent.Replace("\r\n", "\n"));
+        Assert.Equal(TestUtilities.NormalizeLineEndings(expectedCode), TestUtilities.NormalizeLineEndings(fileContent));
     }
 }

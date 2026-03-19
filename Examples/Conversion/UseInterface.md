@@ -145,7 +145,7 @@ public async Task ProcessPayment_ValidCard_Succeeds()
 ### Tool Usage
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json use-interface '{
-    "solutionPath": "PaymentService.sln",
+    "solutionPath": "PaymentService.slnx",
     "filePath": "Services/PaymentProcessor.cs",
     "methodName": "ProcessPaymentAsync",
     "parameterName": "gateway",

@@ -243,8 +243,9 @@ internal static class RefactoringHelpers
     {
         var newDocument = document.WithSyntaxRoot(newRoot);
         var newText = await newDocument.GetTextAsync();
-        var encoding = await GetFileEncodingAsync(document.FilePath!);
-        await File.WriteAllTextAsync(document.FilePath!, newText.ToString(), encoding);
+        var (originalText, encoding) = await ReadFileWithEncodingAsync(document.FilePath!);
+        var updatedText = PreserveLineEndings(newText.ToString(), originalText);
+        await File.WriteAllTextAsync(document.FilePath!, updatedText, encoding);
         UpdateSolutionCache(newDocument);
     }
 
@@ -263,8 +264,9 @@ internal static class RefactoringHelpers
         if (newText.StartsWith("Error:"))
             return newText;
 
-        await File.WriteAllTextAsync(filePath, newText, encoding);
-        UpdateFileCaches(filePath, newText);
+        var updatedText = PreserveLineEndings(newText, sourceText);
+        await File.WriteAllTextAsync(filePath, updatedText, encoding);
+        UpdateFileCaches(filePath, updatedText);
         return successMessage;
     }
 
@@ -417,8 +419,27 @@ internal static class RefactoringHelpers
         Encoding encoding,
         CancellationToken cancellationToken = default)
     {
-        await File.WriteAllTextAsync(filePath, text, encoding, cancellationToken);
-        UpdateFileCaches(filePath, text);
+        string originalText;
+        if (File.Exists(filePath))
+        {
+            (originalText, _) = await ReadFileWithEncodingAsync(filePath, cancellationToken);
+        }
+        else
+        {
+            originalText = text;
+        }
+
+        var updatedText = PreserveLineEndings(text, originalText);
+        await File.WriteAllTextAsync(filePath, updatedText, encoding, cancellationToken);
+        UpdateFileCaches(filePath, updatedText);
+    }
+
+    internal static string PreserveLineEndings(string updatedText, string originalText)
+    {
+        var normalizedUpdatedText = updatedText.Replace("\r\n", "\n");
+        return originalText.Contains("\r\n")
+            ? normalizedUpdatedText.Replace("\n", "\r\n")
+            : normalizedUpdatedText;
     }
 
     internal static async Task<string> RunWithSolutionOrFile(

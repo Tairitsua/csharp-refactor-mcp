@@ -6,7 +6,7 @@ namespace RefactorMCP.Tests;
 public abstract class TestBase : IDisposable
 {
     protected static readonly string SolutionPath = TestUtilities.GetSolutionPath();
-    protected static readonly string ExampleFilePath = Path.Combine(Path.GetDirectoryName(SolutionPath)!, "RefactorMCP.Tests", "ExampleCode.cs");
+    protected static readonly string ExampleFilePath = TestUtilities.GetExampleCodePath();
     private static readonly string TestOutputRoot =
         Path.Combine(Path.GetDirectoryName(SolutionPath)!, "RefactorMCP.Tests", "TestOutput");
 

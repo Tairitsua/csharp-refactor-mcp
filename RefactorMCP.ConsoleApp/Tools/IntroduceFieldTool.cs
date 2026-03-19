@@ -14,7 +14,7 @@ public static class IntroduceFieldTool
 {
     [McpServerTool, Description("Introduce a new field from selected expression (preferred for large C# file refactoring)")]
     public static async Task<string> IntroduceField(
-        [Description("Absolute path to the solution file (.sln)")] string solutionPath,
+        [Description("Absolute path to the solution file (.sln or .slnx)")] string solutionPath,
         [Description("Path to the C# file")] string filePath,
         [Description("Range in format 'startLine:startColumn-endLine:endColumn'")] string selectionRange,
         [Description("Name for the new field")] string fieldName,
