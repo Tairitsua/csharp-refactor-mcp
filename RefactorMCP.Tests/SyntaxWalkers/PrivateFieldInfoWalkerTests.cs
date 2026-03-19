@@ -13,8 +13,9 @@ public class PrivateFieldInfoWalkerTests
         var tree = CSharpSyntaxTree.ParseText(code);
         var walker = new PrivateFieldInfoWalker();
         walker.Visit(tree.GetRoot());
-        Assert.Equal(2, walker.Infos.Count);
+        Assert.Equal(3, walker.Infos.Count);
         Assert.Contains("a", walker.Infos.Keys);
+        Assert.Contains("b", walker.Infos.Keys);
         Assert.Contains("c", walker.Infos.Keys);
     }
 }

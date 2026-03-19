@@ -36,10 +36,10 @@ namespace RefactorMCP.ConsoleApp.SyntaxWalkers
         public override void VisitInvocationExpression(InvocationExpressionSyntax node)
         {
             base.VisitInvocationExpression(node);
-            if (node.Expression is IdentifierNameSyntax id)
+            if (TryGetInvokedMethodName(node.Expression, out var methodName))
             {
-                _invocations.TryGetValue(id.Identifier.ValueText, out var count);
-                _invocations[id.Identifier.ValueText] = count + 1;
+                _invocations.TryGetValue(methodName, out var count);
+                _invocations[methodName] = count + 1;
             }
         }
 
@@ -112,9 +112,29 @@ namespace RefactorMCP.ConsoleApp.SyntaxWalkers
             foreach (var (name, _) in _fields)
             {
                 _fieldRefs.TryGetValue(name, out var count);
-                if (count <= 1)
+                if (count == 0)
                     Suggestions.Add($"Field '{name}' appears unused -> safe-delete-field");
             }
+        }
+
+        private static bool TryGetInvokedMethodName(ExpressionSyntax expression, out string methodName)
+        {
+            methodName = string.Empty;
+
+            if (expression is IdentifierNameSyntax id)
+            {
+                methodName = id.Identifier.ValueText;
+                return true;
+            }
+
+            if (expression is MemberAccessExpressionSyntax memberAccess &&
+                memberAccess.Name is IdentifierNameSyntax memberName)
+            {
+                methodName = memberName.Identifier.ValueText;
+                return true;
+            }
+
+            return false;
         }
     }
 }

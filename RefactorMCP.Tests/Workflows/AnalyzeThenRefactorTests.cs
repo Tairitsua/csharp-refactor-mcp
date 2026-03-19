@@ -278,7 +278,7 @@ public class Config
         var introduceResult = await IntroduceFieldTool.IntroduceField(
             SolutionPath,
             testFile,
-            "8:16-8:18",
+            "7:16-7:18",
             "_defaultTimeout");
 
         Assert.Contains("introduced", introduceResult.ToLowerInvariant());

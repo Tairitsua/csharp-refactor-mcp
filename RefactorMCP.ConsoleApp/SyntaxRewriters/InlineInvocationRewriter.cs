@@ -53,8 +53,7 @@ internal class InlineInvocationRewriter : CSharpSyntaxRewriter
                     .Zip(invocation.ArgumentList.Arguments, (p, a) => new { p, a })
                     .ToDictionary(x => x.p.Identifier.ValueText, x => x.a.Expression);
 
-                var rewriter = new ParameterRewriter(argMap);
-                var stmts = _method.Body!.Statements.Select(s => (StatementSyntax)rewriter.Visit(s)!);
+                var stmts = GetInlinedStatements(argMap);
                 newStatements.AddRange(stmts);
             }
             else
@@ -64,6 +63,25 @@ internal class InlineInvocationRewriter : CSharpSyntaxRewriter
         }
 
         return node.WithStatements(SyntaxFactory.List(newStatements));
+    }
+
+    private IEnumerable<StatementSyntax> GetInlinedStatements(Dictionary<string, ExpressionSyntax> argMap)
+    {
+        var rewriter = new ParameterRewriter(argMap);
+
+        if (_method.Body != null)
+            return _method.Body.Statements.Select(statement => (StatementSyntax)rewriter.Visit(statement)!);
+
+        if (_method.ExpressionBody != null)
+        {
+            var expression = (ExpressionSyntax)rewriter.Visit(_method.ExpressionBody.Expression)!;
+            return new[]
+            {
+                SyntaxFactory.ExpressionStatement(expression)
+            };
+        }
+
+        return Enumerable.Empty<StatementSyntax>();
     }
 }
 

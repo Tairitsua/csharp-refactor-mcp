@@ -138,7 +138,7 @@ public static class SafeDeleteTool
             throw new McpException($"Error: Field '{fieldName}' not found. Verify the field name and ensure the file is part of the loaded solution.");
 
         var references = root.DescendantNodes().OfType<IdentifierNameSyntax>().Count(id => id.Identifier.ValueText == fieldName);
-        if (references > 1)
+        if (references > 0)
             throw new McpException($"Error: Field '{fieldName}' is referenced");
 
         SyntaxNode newRoot;
@@ -192,7 +192,11 @@ public static class SafeDeleteTool
             throw new McpException($"Error: Method '{methodName}' not found. Verify the method name and ensure the file is part of the loaded solution.");
 
         var references = root.DescendantNodes().OfType<InvocationExpressionSyntax>()
-            .Count(inv => inv.Expression is IdentifierNameSyntax id && id.Identifier.ValueText == methodName);
+            .Count(inv =>
+                inv.Expression is IdentifierNameSyntax id && id.Identifier.ValueText == methodName ||
+                inv.Expression is MemberAccessExpressionSyntax memberAccess &&
+                memberAccess.Name is IdentifierNameSyntax memberName &&
+                memberName.Identifier.ValueText == methodName);
         if (references > 0)
             throw new McpException($"Error: Method '{methodName}' is referenced");
 

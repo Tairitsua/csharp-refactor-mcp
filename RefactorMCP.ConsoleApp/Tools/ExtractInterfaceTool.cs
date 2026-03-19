@@ -50,14 +50,28 @@ public static class ExtractInterfaceTool
                     {
                         case MethodDeclarationSyntax m:
                             members.Add(m.WithBody(null)
+                                .WithExpressionBody(null)
                                 .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
                                 .WithModifiers(new SyntaxTokenList()));
                             break;
                         case PropertyDeclarationSyntax p:
-                            var accessors = p.AccessorList ?? SyntaxFactory.AccessorList();
-                            accessors = SyntaxFactory.AccessorList(SyntaxFactory.List(
-                                accessors.Accessors.Select(a => a.WithBody(null)
-                                    .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)))));
+                            AccessorListSyntax accessors;
+                            if (p.AccessorList != null && p.AccessorList.Accessors.Count > 0)
+                            {
+                                accessors = SyntaxFactory.AccessorList(SyntaxFactory.List(
+                                    p.AccessorList.Accessors.Select(a => a
+                                        .WithBody(null)
+                                        .WithExpressionBody(null)
+                                        .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)))));
+                            }
+                            else
+                            {
+                                accessors = SyntaxFactory.AccessorList(
+                                    SyntaxFactory.SingletonList(
+                                        SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                                            .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))));
+                            }
+
                             members.Add(p.WithAccessorList(accessors).WithModifiers(new SyntaxTokenList()));
                             break;
                     }
@@ -89,11 +103,24 @@ public static class ExtractInterfaceTool
             var encoding = await RefactoringHelpers.GetFileEncodingAsync(filePath, cancellationToken);
             await File.WriteAllTextAsync(interfaceFilePath, ifaceUnit.ToFullString(), encoding, cancellationToken);
 
-            var baseList = SyntaxFactory.BaseList(
-                    SyntaxFactory.SingletonSeparatedList<BaseTypeSyntax>(
-                        SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName(interfaceName))))
-                .WithColonToken(SyntaxFactory.Token(SyntaxKind.ColonToken).WithTrailingTrivia(SyntaxFactory.Space));
-            var updatedClass = classNode.WithBaseList(baseList);
+            var interfaceType = SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName(interfaceName));
+            BaseListSyntax updatedBaseList;
+            if (classNode.BaseList == null)
+            {
+                updatedBaseList = SyntaxFactory.BaseList(
+                        SyntaxFactory.SingletonSeparatedList<BaseTypeSyntax>(interfaceType))
+                    .WithColonToken(SyntaxFactory.Token(SyntaxKind.ColonToken).WithTrailingTrivia(SyntaxFactory.Space));
+            }
+            else if (classNode.BaseList.Types.Any(t => t.Type.ToString() == interfaceName))
+            {
+                updatedBaseList = classNode.BaseList;
+            }
+            else
+            {
+                updatedBaseList = classNode.BaseList.WithTypes(classNode.BaseList.Types.Add(interfaceType));
+            }
+
+            var updatedClass = classNode.WithBaseList(updatedBaseList);
             var newRoot = root.ReplaceNode(classNode, updatedClass);
             var formatted = newRoot.NormalizeWhitespace().ToFullString();
             await File.WriteAllTextAsync(filePath, formatted, encoding, cancellationToken);

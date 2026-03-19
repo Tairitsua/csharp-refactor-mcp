@@ -148,9 +148,8 @@ class C
     }
 
     [Fact]
-    public void InstanceMemberNameWalker_IncludesStaticFields()
+    public void InstanceMemberNameWalker_ExcludesStaticFields()
     {
-        // Note: This walker collects ALL fields, including static
         var code = @"
 class C
 {
@@ -161,8 +160,8 @@ class C
         var walker = new InstanceMemberNameWalker();
         walker.Visit(tree.GetRoot());
 
-        Assert.Equal(2, walker.Names.Count);
-        Assert.Contains("staticField", walker.Names);
+        Assert.Single(walker.Names);
+        Assert.DoesNotContain("staticField", walker.Names);
         Assert.Contains("instanceField", walker.Names);
     }
 }

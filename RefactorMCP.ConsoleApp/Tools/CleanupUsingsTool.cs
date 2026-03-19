@@ -48,8 +48,12 @@ public static class CleanupUsingsTool
             return $"Could not compile project for {document.FilePath}";
 
         var diagnostics = compilation.GetDiagnostics();
+        var syntaxTree = root.SyntaxTree;
         var unused = diagnostics
-            .Where(d => d.Id == "CS8019")
+            .Where(d =>
+                d.Id == "CS8019" &&
+                d.Location.SourceTree == syntaxTree &&
+                root.FullSpan.Contains(d.Location.SourceSpan))
             .Select(d => root.FindNode(d.Location.SourceSpan))
             .OfType<UsingDirectiveSyntax>()
             .ToList();
@@ -83,7 +87,10 @@ public static class CleanupUsingsTool
         var diagnostics = compilation.GetDiagnostics();
         var root = tree.GetRoot();
         var unused = diagnostics
-            .Where(d => d.Id == "CS8019")
+            .Where(d =>
+                d.Id == "CS8019" &&
+                d.Location.SourceTree == tree &&
+                root.FullSpan.Contains(d.Location.SourceSpan))
             .Select(d => root.FindNode(d.Location.SourceSpan))
             .OfType<UsingDirectiveSyntax>()
             .ToList();

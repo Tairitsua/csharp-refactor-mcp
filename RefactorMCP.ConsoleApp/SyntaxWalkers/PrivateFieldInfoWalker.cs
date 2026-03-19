@@ -11,12 +11,23 @@ namespace RefactorMCP.ConsoleApp.SyntaxWalkers
 
         public override void VisitFieldDeclaration(FieldDeclarationSyntax node)
         {
-            if (node.Modifiers.Any(SyntaxKind.PrivateKeyword))
+            if (IsPrivateField(node))
             {
                 foreach (var variable in node.Declaration.Variables)
                     Infos[variable.Identifier.ValueText] = node.Declaration.Type;
             }
             base.VisitFieldDeclaration(node);
+        }
+
+        private static bool IsPrivateField(FieldDeclarationSyntax node)
+        {
+            if (node.Modifiers.Any(SyntaxKind.PrivateKeyword))
+                return true;
+
+            return !node.Modifiers.Any(m =>
+                m.IsKind(SyntaxKind.PublicKeyword) ||
+                m.IsKind(SyntaxKind.ProtectedKeyword) ||
+                m.IsKind(SyntaxKind.InternalKeyword));
         }
     }
 }
