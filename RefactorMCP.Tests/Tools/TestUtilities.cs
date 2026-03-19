@@ -6,18 +6,23 @@ namespace RefactorMCP.Tests;
 
 public static class TestUtilities
 {
+    private static readonly string[] SolutionFileNames = ["RefactorMCP.slnx", "RefactorMCP.sln"];
+
     public static string GetSolutionPath()
     {
         var currentDir = Directory.GetCurrentDirectory();
         var dir = new DirectoryInfo(currentDir);
         while (dir != null)
         {
-            var solutionFile = Path.Combine(dir.FullName, "RefactorMCP.sln");
-            if (File.Exists(solutionFile))
-                return solutionFile;
+            foreach (var solutionFileName in SolutionFileNames)
+            {
+                var solutionFile = Path.Combine(dir.FullName, solutionFileName);
+                if (File.Exists(solutionFile))
+                    return solutionFile;
+            }
             dir = dir.Parent;
         }
-        return "./RefactorMCP.sln";
+        return "./RefactorMCP.slnx";
     }
 
     public static async Task CreateTestFile(string filePath, string content)

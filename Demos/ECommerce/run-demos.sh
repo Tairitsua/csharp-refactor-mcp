@@ -6,7 +6,7 @@
 # Each demo starts from a fresh copy of the source files.
 #
 # Prerequisites:
-#   - .NET 9.0 SDK installed
+#   - .NET 10.0 SDK installed
 #   - RefactorMCP built: dotnet build (from repo root)
 #
 # Usage:
@@ -20,7 +20,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TOOL="dotnet run --project $REPO_ROOT/RefactorMCP.ConsoleApp --"
-SLN="$SCRIPT_DIR/ECommerce.sln"
+SLN="$SCRIPT_DIR/ECommerce.slnx"
 SRC="$SCRIPT_DIR/ECommerce"
 ORIGINALS="$SCRIPT_DIR/originals"
 

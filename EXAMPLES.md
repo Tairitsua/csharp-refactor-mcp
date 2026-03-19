@@ -10,12 +10,12 @@ Using the MCP tools is the preferred method for refactoring large C# files where
 Before performing any refactoring, you need to load a solution. This also clears any cached data so each load starts a fresh session:
 
 ```bash
-dotnet run --project RefactorMCP.ConsoleApp -- --json load-solution '{"solutionPath":"./RefactorMCP.sln"}'
+dotnet run --project RefactorMCP.ConsoleApp -- --json load-solution '{"solutionPath":"./RefactorMCP.slnx"}'
 ```
 
 ### JSON Example
 ```json
-{"tool":"load-solution","solutionPath":"./RefactorMCP.sln"}
+{"tool":"load-solution","solutionPath":"./RefactorMCP.slnx"}
 ```
 
 ### JSON Mode Usage
@@ -50,7 +50,7 @@ public int Calculate(int a, int b)
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli extract-method \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/ExampleCode.cs" \
   "22:9-25:34" \
   "ValidateInputs"
@@ -60,7 +60,7 @@ dotnet run --project RefactorMCP.ConsoleApp -- --cli extract-method \
 ```json
 {
   "tool": "extract-method",
-  "solutionPath": "./RefactorMCP.sln",
+  "solutionPath": "./RefactorMCP.slnx",
   "filePath": "./RefactorMCP.Tests/ExampleCode.cs",
   "selectionRange": "22:9-25:34",
   "methodName": "ValidateInputs"
@@ -104,7 +104,7 @@ public double GetAverage()
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli introduce-field \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/ExampleCode.cs" \
   "35:16-35:58" \
   "_averageValue" \
@@ -138,7 +138,7 @@ public string FormatResult(int value)
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli introduce-variable \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/ExampleCode.cs" \
   "41:50-41:65" \
   "processedValue"
@@ -176,7 +176,7 @@ public void SetFormat(string newFormat)
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli make-field-readonly \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/ExampleCode.cs" \
   format
 ```
@@ -210,7 +210,7 @@ public string FormatResult(int value)
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli introduce-parameter \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/ExampleCode.cs" \
   40 \
   "41:50-41:65" \
@@ -243,7 +243,7 @@ public string GetFormattedNumber(int number)
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli convert-to-static-with-parameters \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/ExampleCode.cs" \
   GetFormattedNumber
 ```
@@ -272,7 +272,7 @@ public string GetFormattedNumber(int number)
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli convert-to-static-with-instance \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/ExampleCode.cs" \
   GetFormattedNumber \
   "calculator"
@@ -302,7 +302,7 @@ public string GetFormattedNumber(int number)
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli convert-to-extension-method \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/ExampleCode.cs" \
   GetFormattedNumber
 ```
@@ -334,7 +334,7 @@ public static string FormatCurrency(decimal amount)
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli move-static-method \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/ExampleCode.cs" \
   FormatCurrency \
   MathUtilities
@@ -369,7 +369,7 @@ public void LogOperation(string operation)
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli move-instance-method \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/ExampleCode.cs" \
   Calculator \
   LogOperation \
@@ -423,7 +423,7 @@ public string GetFormattedNumber(int number)
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli make-static-then-move \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/ExampleCode.cs" \
   GetFormattedNumber \
   MathUtilities \
@@ -469,7 +469,7 @@ class Target { }
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli move-multiple-methods-instance \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/ExampleCode.cs" \
   Helper \
   "A,B" \
@@ -482,7 +482,7 @@ Move methods to a separate file using the `targetFile` property or by passing a 
 
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli move-multiple-methods-instance \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/ExampleCode.cs" \
   Helper \
   A \
@@ -495,7 +495,7 @@ Move the same methods but convert them to static members with an explicit `this`
 
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli move-multiple-methods-static \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/ExampleCode.cs" \
   Helper \
   "A,B" \
@@ -542,7 +542,7 @@ Because an access field didn't exist, the refactoring introduced a private reado
 ### Example
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli batch-move-methods \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/ExampleCode.cs" \
   "[{\"SourceClass\":\"Helper\",\"Method\":\"A\",\"TargetClass\":\"Target\",\"AccessMember\":\"t\"}]"
 ```
@@ -566,7 +566,7 @@ public class Logger
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli move-to-separate-file \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/ExampleCode.cs" \
   Logger
 ```
@@ -605,7 +605,7 @@ public void Call()
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli inline-method \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./InlineSample.cs" \
   Helper
 ```
@@ -634,7 +634,7 @@ public int Multiply(int x, int y, int unusedParam)
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli safe-delete-parameter \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/ExampleCode.cs" \
   Multiply \
   unusedParam
@@ -661,7 +661,7 @@ public string Name { get; set; } = "Default Calculator";
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli transform-setter-to-init \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/ExampleCode.cs" \
   Name
 ```
@@ -684,7 +684,7 @@ private int deprecatedCounter = 0; // Not used anywhere
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli safe-delete-field \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/ExampleCode.cs" \
   deprecatedCounter
 ```
@@ -713,7 +713,7 @@ public class CleanupSample
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli cleanup-usings \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./CleanupSample.cs"
 ```
 
@@ -734,15 +734,15 @@ public class CleanupSample
 ### Example
 **Command**:
 ```bash
-dotnet run --project RefactorMCP.ConsoleApp -- --cli load-solution "./RefactorMCP.sln"
+dotnet run --project RefactorMCP.ConsoleApp -- --cli load-solution "./RefactorMCP.slnx"
 ```
 ```json
-{"tool":"load-solution","solutionPath":"./RefactorMCP.sln"}
+{"tool":"load-solution","solutionPath":"./RefactorMCP.slnx"}
 ```
 
 **Expected Output**:
 ```
-Successfully loaded solution 'RefactorMCP.sln' with 2 projects: RefactorMCP.ConsoleApp, RefactorMCP.Tests
+Successfully loaded solution 'RefactorMCP.slnx' with 2 projects: RefactorMCP.ConsoleApp, RefactorMCP.Tests
 ```
 
 ## 9. Unload Solution (Utility Command)
@@ -752,12 +752,12 @@ Successfully loaded solution 'RefactorMCP.sln' with 2 projects: RefactorMCP.Cons
 ### Example
 **Command**:
 ```bash
-dotnet run --project RefactorMCP.ConsoleApp -- --cli unload-solution "./RefactorMCP.sln"
+dotnet run --project RefactorMCP.ConsoleApp -- --cli unload-solution "./RefactorMCP.slnx"
 ```
 
 **Expected Output**:
 ```
-Unloaded solution 'RefactorMCP.sln' from cache
+Unloaded solution 'RefactorMCP.slnx' from cache
 ```
 
 ## 10. Clear Solution Cache (Utility Command)
@@ -793,7 +793,7 @@ Cleared move history
 ### Failed Move Example
 A failed move does not record the method:
 ```json
-{"tool":"move-instance-method","solutionPath":"./RefactorMCP.sln","filePath":"./RefactorMCP.Tests/ExampleCode.cs","sourceClass":"Wrong","methodNames":["LogOperation"],"targetClass":"Logger"}
+{"tool":"move-instance-method","solutionPath":"./RefactorMCP.slnx","filePath":"./RefactorMCP.Tests/ExampleCode.cs","sourceClass":"Wrong","methodNames":["LogOperation"],"targetClass":"Logger"}
 ```
 Running the command again with the correct `sourceClass` succeeds.
 
@@ -851,7 +851,7 @@ Version: 1.0.0.0 (Build 2024-01-01 00:00:00Z)
 ### Example
 **Command**:
 ```bash
-dotnet run --project RefactorMCP.ConsoleApp -- --cli analyze-refactoring-opportunities "./RefactorMCP.Tests/ExampleCode.cs" "./RefactorMCP.sln"
+dotnet run --project RefactorMCP.ConsoleApp -- --cli analyze-refactoring-opportunities "./RefactorMCP.Tests/ExampleCode.cs" "./RefactorMCP.slnx"
 ```
 
 **Expected Output**:
@@ -868,7 +868,7 @@ Suggestions:
 ### Example
 **Command**:
 ```bash
-dotnet run --project RefactorMCP.ConsoleApp -- --cli list-class-lengths "./RefactorMCP.sln"
+dotnet run --project RefactorMCP.ConsoleApp -- --cli list-class-lengths "./RefactorMCP.slnx"
 ```
 
 **Expected Output**:
@@ -896,7 +896,7 @@ public class Person
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli extract-interface \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/ExampleCode.cs" \
   Person \
   "Name,Greet" \
@@ -936,7 +936,7 @@ return numbers.Sum() / (double)numbers.Count;
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli rename-symbol \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/ExampleCode.cs" \
   numbers \
   values
@@ -986,7 +986,7 @@ public void DoWork()
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli feature-flag-refactor \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/FeatureFlag.cs" \
   CoolFeature
 ```
@@ -1016,7 +1016,7 @@ public class Greeter
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli extract-decorator \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/Decorator.cs" \
   Greeter \
   Greet
@@ -1049,7 +1049,7 @@ public class LegacyLogger
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli create-adapter \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/Adapter.cs" \
   LegacyLogger \
   Write \
@@ -1084,7 +1084,7 @@ public class Counter
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli add-observer \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/Observer.cs" \
   Counter \
   Update \
@@ -1131,7 +1131,7 @@ class C
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli constructor-injection \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/ExampleCode.cs" \
   "Add:a;Multiply:b"
 ```
@@ -1187,7 +1187,7 @@ public class C
 **Command**:
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --cli use-interface \
-  "./RefactorMCP.sln" \
+  "./RefactorMCP.slnx" \
   "./RefactorMCP.Tests/Writer.cs" \
   DoWork \
   writer \
@@ -1259,7 +1259,7 @@ To select `if (a < 0 || b < 0)` on line 3:
 
 4. **Solution not found**:
    ```
-   Error: Solution file not found at ./path/to/solution.sln
+   Error: Solution file not found at ./path/to/solution.slnx
    ```
 
 ### Tips for Success
@@ -1277,13 +1277,13 @@ You can perform multiple refactorings in sequence:
 
 ```bash
 # First, extract a method
-dotnet run --project RefactorMCP.ConsoleApp -- --cli extract-method "./RefactorMCP.sln" "./MyFile.cs" "10:5-15:20" "ExtractedMethod"
+dotnet run --project RefactorMCP.ConsoleApp -- --cli extract-method "./RefactorMCP.slnx" "./MyFile.cs" "10:5-15:20" "ExtractedMethod"
 
 # Then, make a field readonly
-dotnet run --project RefactorMCP.ConsoleApp -- --cli make-field-readonly "./RefactorMCP.sln" "./MyFile.cs" 25
+dotnet run --project RefactorMCP.ConsoleApp -- --cli make-field-readonly "./RefactorMCP.slnx" "./MyFile.cs" 25
 
 # Finally, introduce a variable
-dotnet run --project RefactorMCP.ConsoleApp -- --cli introduce-variable "./RefactorMCP.sln" "./MyFile.cs" "30:10-30:35" "tempValue"
+dotnet run --project RefactorMCP.ConsoleApp -- --cli introduce-variable "./RefactorMCP.slnx" "./MyFile.cs" "30:10-30:35" "tempValue"
 ```
 
 ### Working with Different Projects
@@ -1291,38 +1291,38 @@ If your solution has multiple projects, make sure to specify the correct file pa
 
 ```bash
 # For a file in the main project
-dotnet run --project RefactorMCP.ConsoleApp -- --cli extract-method "./RefactorMCP.sln" "./RefactorMCP.ConsoleApp/MyFile.cs" "10:5-15:20" "ExtractedMethod"
+dotnet run --project RefactorMCP.ConsoleApp -- --cli extract-method "./RefactorMCP.slnx" "./RefactorMCP.ConsoleApp/MyFile.cs" "10:5-15:20" "ExtractedMethod"
 
 # For a file in the test project  
-dotnet run --project RefactorMCP.ConsoleApp -- --cli extract-method "./RefactorMCP.sln" "./RefactorMCP.Tests/TestFile.cs" "5:1-8:10" "TestMethod"
+dotnet run --project RefactorMCP.ConsoleApp -- --cli extract-method "./RefactorMCP.slnx" "./RefactorMCP.Tests/TestFile.cs" "5:1-8:10" "TestMethod"
 ```
 
 ### File-Scoped Namespace Example
 When a tool needs to create a new file, the namespace uses the file-scoped style:
 
 ```json
-{"tool":"move-static-method","solutionPath":"./RefactorMCP.sln","filePath":"./RefactorMCP.Tests/ExampleCode.cs","methodName":"Add","targetClass":"MathHelpers","targetFilePath":"./RefactorMCP.Tests/MathHelpers.cs"}
+{"tool":"move-static-method","solutionPath":"./RefactorMCP.slnx","filePath":"./RefactorMCP.Tests/ExampleCode.cs","methodName":"Add","targetClass":"MathHelpers","targetFilePath":"./RefactorMCP.Tests/MathHelpers.cs"}
 ```
 
 ### Overloaded Methods Example
 `move-multiple-methods-static` now works when the source class contains overloaded methods:
 
 ```json
-{"tool":"move-multiple-methods-static","solutionPath":"./RefactorMCP.sln","filePath":"./RefactorMCP.Tests/ExampleCode.cs","sourceClass":"Helper","methodNames":["A","A"],"targetClass":"Target","targetFilePath":"./Target.cs"}
+{"tool":"move-multiple-methods-static","solutionPath":"./RefactorMCP.slnx","filePath":"./RefactorMCP.Tests/ExampleCode.cs","sourceClass":"Helper","methodNames":["A","A"],"targetClass":"Target","targetFilePath":"./Target.cs"}
 ```
 
 ### JSON Example
 Provide `methodNames` as a list (this property is required):
 
 ```json
-{"tool":"move-instance-method","solutionPath":"./RefactorMCP.sln","filePath":"./RefactorMCP.Tests/ExampleCode.cs","sourceClass":"Calculator","methodNames":["LogOperation"],"targetClass":"Logger"}
+{"tool":"move-instance-method","solutionPath":"./RefactorMCP.slnx","filePath":"./RefactorMCP.Tests/ExampleCode.cs","sourceClass":"Calculator","methodNames":["LogOperation"],"targetClass":"Logger"}
 ```
 
 ### Interface/Base Member Example
 Inherited members are automatically qualified when moved:
 
 ```json
-{"tool":"move-instance-method","solutionPath":"./RefactorMCP.sln","filePath":"./RefactorMCP.Tests/ExampleCode.cs","sourceClass":"Derived","methodNames":["PrintName"],"targetClass":"Target"}
+{"tool":"move-instance-method","solutionPath":"./RefactorMCP.slnx","filePath":"./RefactorMCP.Tests/ExampleCode.cs","sourceClass":"Derived","methodNames":["PrintName"],"targetClass":"Target"}
 ```
 
 ### Automatic Static Conversion
@@ -1339,7 +1339,7 @@ This URI returns metrics for the `Calculate` method. Omitting the method name
 returns metrics for the whole class, and specifying only the file gives all
 classes and methods.
 
-Metrics are cached in `.refactor-mcp/metrics/` once a solution is loaded. The path mirrors the solution's folder structure. For example after running `load-solution` on `RefactorMCP.sln` metrics for `RefactorMCP.Tests/ExampleCode.cs` are written to:
+Metrics are cached in `.refactor-mcp/metrics/` once a solution is loaded. The path mirrors the solution's folder structure. For example after running `load-solution` on `RefactorMCP.slnx` metrics for `RefactorMCP.Tests/ExampleCode.cs` are written to:
 
 ```text
 .refactor-mcp/metrics/RefactorMCP.Tests/ExampleCode.cs.json
@@ -1365,5 +1365,5 @@ dotnet run --project RefactorMCP.ConsoleApp -- --cli play-log ./.refactor-mcp/to
 ### JSON Logging Example
 Invoking tools in JSON mode is also recorded once `load-solution` has been run:
 ```bash
-dotnet run --project RefactorMCP.ConsoleApp -- --json cleanup-usings '{"solutionPath":"./RefactorMCP.sln","documentPath":"./RefactorMCP.Tests/ExampleCode.cs"}'
+dotnet run --project RefactorMCP.ConsoleApp -- --json cleanup-usings '{"solutionPath":"./RefactorMCP.slnx","documentPath":"./RefactorMCP.Tests/ExampleCode.cs"}'
 ```

@@ -31,7 +31,7 @@ You've inherited a small e-commerce platform with typical code smells:
 
 ### Prerequisites
 
-- .NET 9.0 SDK
+- .NET 10.0 SDK
 - RefactorMCP built from repo root: `dotnet build`
 
 ### Run All Demos
@@ -59,9 +59,9 @@ cd Demos/ECommerce
 
 ```
 ECommerce/
-├── ECommerce.sln              # Solution file (required for solution-wide refactoring)
+├── ECommerce.slnx              # Solution file (required for solution-wide refactoring)
 ├── ECommerce/
-│   ├── ECommerce.csproj       # .NET 9.0 library project
+│   ├── ECommerce.csproj       # .NET 10.0 library project
 │   ├── Models.cs              # Domain models (Order, Customer, Product, etc.)
 │   ├── OrderProcessor.cs      # God class — main refactoring target
 │   ├── PricingEngine.cs       # Complex pricing logic

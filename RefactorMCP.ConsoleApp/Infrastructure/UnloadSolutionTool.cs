@@ -9,16 +9,20 @@ public static class UnloadSolutionTool
 {
     [McpServerTool, Description("Unload a solution and remove it from the cache")]
     public static string UnloadSolution(
-        [Description("Absolute path to the solution file (.sln)")] string solutionPath,
+        [Description(RefactoringHelpers.SolutionPathDescription)] string solutionPath,
         CancellationToken cancellationToken = default)
     {
-        if (RefactoringHelpers.SolutionCache.TryGetValue(solutionPath, out _))
+        var resolvedSolutionPath = RefactoringHelpers.TryResolveSolutionPath(solutionPath, out var resolvedPath)
+            ? resolvedPath
+            : Path.GetFullPath(solutionPath);
+
+        if (RefactoringHelpers.SolutionCache.TryGetValue(resolvedSolutionPath, out _))
         {
-            RefactoringHelpers.SolutionCache.Remove(solutionPath);
-            return $"Unloaded solution '{Path.GetFileName(solutionPath)}' from cache";
+            RefactoringHelpers.SolutionCache.Remove(resolvedSolutionPath);
+            return $"Unloaded solution '{Path.GetFileName(resolvedSolutionPath)}' from cache";
         }
 
-        return $"Solution '{Path.GetFileName(solutionPath)}' was not loaded";
+        return $"Solution '{Path.GetFileName(resolvedSolutionPath)}' was not loaded";
     }
 
     [McpServerTool, Description("Clear all cached solutions")]

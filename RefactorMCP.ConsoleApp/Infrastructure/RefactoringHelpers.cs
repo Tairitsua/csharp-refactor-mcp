@@ -18,6 +18,9 @@ using System.Collections.Generic;
 
 internal static class RefactoringHelpers
 {
+    internal const string SolutionPathDescription = "Absolute path to the solution file (.sln or .slnx)";
+    private static readonly string[] SupportedSolutionExtensions = [".slnx", ".sln"];
+
     // MemoryCache is thread-safe and Solution objects from Roslyn are immutable.
     // This allows us to store and access Solution instances across threads
     // without additional locking or synchronization.
@@ -64,10 +67,80 @@ internal static class RefactoringHelpers
         return workspace;
     }
 
+    internal static bool TryResolveSolutionPath(string solutionPath, out string resolvedSolutionPath)
+    {
+        resolvedSolutionPath = string.Empty;
+        if (string.IsNullOrWhiteSpace(solutionPath))
+        {
+            return false;
+        }
+
+        var fullPath = Path.GetFullPath(solutionPath);
+        if (File.Exists(fullPath))
+        {
+            resolvedSolutionPath = fullPath;
+            return true;
+        }
+
+        if (!Path.HasExtension(fullPath))
+        {
+            foreach (var extension in SupportedSolutionExtensions)
+            {
+                var candidate = fullPath + extension;
+                if (File.Exists(candidate))
+                {
+                    resolvedSolutionPath = candidate;
+                    return true;
+                }
+            }
+        }
+        else if (string.Equals(Path.GetExtension(fullPath), ".sln", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(Path.GetExtension(fullPath), ".slnx", StringComparison.OrdinalIgnoreCase))
+        {
+            var alternateExtension = string.Equals(Path.GetExtension(fullPath), ".sln", StringComparison.OrdinalIgnoreCase)
+                ? ".slnx"
+                : ".sln";
+            var alternatePath = Path.ChangeExtension(fullPath, alternateExtension);
+            if (File.Exists(alternatePath))
+            {
+                resolvedSolutionPath = alternatePath;
+                return true;
+            }
+        }
+
+        if (Directory.Exists(fullPath))
+        {
+            foreach (var extension in SupportedSolutionExtensions)
+            {
+                var candidate = Directory.EnumerateFiles(fullPath, $"*{extension}", SearchOption.TopDirectoryOnly)
+                    .OrderBy(Path.GetFileName)
+                    .FirstOrDefault();
+                if (candidate != null)
+                {
+                    resolvedSolutionPath = Path.GetFullPath(candidate);
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    internal static string ResolveSolutionPath(string solutionPath)
+    {
+        if (TryResolveSolutionPath(solutionPath, out var resolvedSolutionPath))
+        {
+            return resolvedSolutionPath;
+        }
+
+        throw new McpException($"Error: Solution file not found at {solutionPath}");
+    }
+
     internal static async Task<Solution> GetOrLoadSolution(
         string solutionPath,
         CancellationToken cancellationToken = default)
     {
+        solutionPath = ResolveSolutionPath(solutionPath);
 
         if (SolutionCache.TryGetValue(solutionPath, out Solution? cachedSolution))
         {

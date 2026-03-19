@@ -2,12 +2,21 @@
 
 RefactorMCP is a Model Context Protocol server that exposes Roslyn-based refactoring tools for C#.
 
+The repo targets `.NET 10`, uses [`RefactorMCP.slnx`](./RefactorMCP.slnx) as its primary solution file, and still accepts legacy `.sln` paths by resolving them to the matching `.slnx` file at runtime.
+
 ## Usage
 
 Run the console application directly or host it as an MCP server:
 
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp
+```
+
+Build or test the repo from the root:
+
+```bash
+dotnet build
+dotnet test
 ```
 
 For usage examples see [EXAMPLES.md](./EXAMPLES.md).

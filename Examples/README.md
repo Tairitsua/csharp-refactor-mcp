@@ -73,7 +73,7 @@ This directory contains comprehensive, realistic examples demonstrating each ref
 ## Running the Examples
 
 ### Prerequisites
-1. .NET 9.0 SDK installed
+1. .NET 10.0 SDK installed
 2. RefactorMCP built: `dotnet build`
 
 ### Using the Tools
@@ -81,7 +81,7 @@ This directory contains comprehensive, realistic examples demonstrating each ref
 #### Solution Mode (Recommended)
 ```bash
 dotnet run --project RefactorMCP.ConsoleApp -- --json <tool-name> '{
-    "solutionPath": "path/to/your.sln",
+    "solutionPath": "path/to/your.slnx",
     "filePath": "path/to/file.cs",
     ...additional parameters...
 }'
@@ -99,7 +99,7 @@ dotnet run --project RefactorMCP.ConsoleApp -- --json <tool-name> '{
 
 | Parameter | Description |
 |-----------|-------------|
-| `solutionPath` | Path to .sln file for solution-wide refactoring |
+| `solutionPath` | Path to .slnx file for solution-wide refactoring |
 | `filePath` | Path to the C# file to refactor |
 | `methodName` | Name of the method to refactor |
 | `startLine` / `endLine` | Line range for selection-based refactorings |
@@ -140,7 +140,7 @@ dotnet run --project RefactorMCP.ConsoleApp -- --json <tool-name> '{
 
 ```bash
 # 1. Analyze the class
-dotnet run -- --json class-length-metrics '{"solutionPath": "MyApp.sln"}'
+dotnet run -- --json class-length-metrics '{"solutionPath": "MyApp.slnx"}'
 
 # 2. Find opportunities
 dotnet run -- --json analyze-refactoring-opportunities '{"filePath": "GodClass.cs"}'

@@ -15,16 +15,13 @@ public static class LoadSolutionTool
 {
     [McpServerTool, Description("Start a new session by clearing caches then load a solution file and set the current directory")]
     public static async Task<string> LoadSolution(
-        [Description("Absolute path to the solution file (.sln)")] string solutionPath,
+        [Description(RefactoringHelpers.SolutionPathDescription)] string solutionPath,
         IProgress<string>? progress = null,
         CancellationToken cancellationToken = default)
     {
         try
         {
-            if (!File.Exists(solutionPath))
-            {
-                throw new McpException($"Error: Solution file not found at {solutionPath}");
-            }
+            solutionPath = RefactoringHelpers.ResolveSolutionPath(solutionPath);
 
             RefactoringHelpers.ClearAllCaches();
             MoveMethodTool.ResetMoveHistory();
