@@ -9,6 +9,8 @@ namespace RefactorMCP.Tests.Tools;
 
 public class RenameSymbolToolTests : RefactorMCP.Tests.TestBase
 {
+    private static string NormalizeLineEndings(string text) => text.Replace("\r\n", "\n");
+
     [Fact]
     public async Task RenameSymbol_Field_RenamesReferences()
     {
@@ -49,7 +51,7 @@ public class Sample
 
         Assert.Contains("Successfully renamed", result);
         var fileContent = await File.ReadAllTextAsync(testFile);
-        Assert.Equal(expectedCode, fileContent.Replace("\r\n", "\n"));
+        Assert.Equal(NormalizeLineEndings(expectedCode), NormalizeLineEndings(fileContent));
     }
 
     [Fact]
@@ -131,7 +133,7 @@ public class Consumer
 
         Assert.Contains("Successfully renamed", result);
         var fileContent = await File.ReadAllTextAsync(testFile);
-        Assert.Equal(expectedCode, fileContent.Replace("\r\n", "\n"));
+        Assert.Equal(NormalizeLineEndings(expectedCode), NormalizeLineEndings(fileContent));
     }
 
     [Fact]
@@ -178,7 +180,7 @@ public class Sample
 
         Assert.Contains("Successfully renamed", result);
         var fileContent = await File.ReadAllTextAsync(testFile);
-        Assert.Equal(expectedCode, fileContent.Replace("\r\n", "\n"));
+        Assert.Equal(NormalizeLineEndings(expectedCode), NormalizeLineEndings(fileContent));
     }
 
     [Fact]
@@ -225,7 +227,7 @@ public class Sample
 
         Assert.Contains("Successfully renamed", result);
         var fileContent = await File.ReadAllTextAsync(testFile);
-        Assert.Equal(expectedCode, fileContent.Replace("\r\n", "\n"));
+        Assert.Equal(NormalizeLineEndings(expectedCode), NormalizeLineEndings(fileContent));
     }
 
     [Fact]
@@ -266,7 +268,7 @@ public class Sample
 
         Assert.Contains("Successfully renamed", result);
         var fileContent = await File.ReadAllTextAsync(testFile);
-        Assert.Equal(expectedCode, fileContent.Replace("\r\n", "\n"));
+        Assert.Equal(NormalizeLineEndings(expectedCode), NormalizeLineEndings(fileContent));
     }
 
     [Fact]
@@ -309,7 +311,7 @@ public class Sample
 
         Assert.Contains("Successfully renamed", result);
         var fileContent = await File.ReadAllTextAsync(testFile);
-        Assert.Equal(expectedCode, fileContent.Replace("\r\n", "\n"));
+        Assert.Equal(NormalizeLineEndings(expectedCode), NormalizeLineEndings(fileContent));
     }
 
     [Fact]
@@ -354,7 +356,7 @@ public class Implementation : INewInterface
 
         Assert.Contains("Successfully renamed", result);
         var fileContent = await File.ReadAllTextAsync(testFile);
-        Assert.Equal(expectedCode, fileContent.Replace("\r\n", "\n"));
+        Assert.Equal(NormalizeLineEndings(expectedCode), NormalizeLineEndings(fileContent));
     }
 
     [Fact]
@@ -433,6 +435,6 @@ public class Sample
 
         Assert.Contains("Successfully renamed", result);
         var fileContent = await File.ReadAllTextAsync(testFile);
-        Assert.Equal(expectedCode, fileContent.Replace("\r\n", "\n"));
+        Assert.Equal(NormalizeLineEndings(expectedCode), NormalizeLineEndings(fileContent));
     }
 }

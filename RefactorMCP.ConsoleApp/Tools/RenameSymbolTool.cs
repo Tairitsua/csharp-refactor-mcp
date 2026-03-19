@@ -14,7 +14,7 @@ public static class RenameSymbolTool
 {
     [McpServerTool, Description("Rename a symbol across the solution using Roslyn")]
     public static async Task<string> RenameSymbol(
-        [Description("Absolute path to the solution file (.sln)")] string solutionPath,
+        [Description("Absolute path to the solution file (.sln or .slnx)")] string solutionPath,
         [Description("Path to the C# file containing the symbol")] string filePath,
         [Description("Current name of the symbol")] string oldName,
         [Description("New name for the symbol")] string newName,
@@ -42,8 +42,9 @@ public static class RenameSymbolTool
                 {
                     var newDoc = renamed.GetDocument(id)!;
                     var text = await newDoc.GetTextAsync(cancellationToken);
-                    var encoding = await RefactoringHelpers.GetFileEncodingAsync(newDoc.FilePath!, cancellationToken);
-                    await File.WriteAllTextAsync(newDoc.FilePath!, text.ToString(), encoding, cancellationToken);
+                    var (originalText, encoding) = await RefactoringHelpers.ReadFileWithEncodingAsync(newDoc.FilePath!, cancellationToken);
+                    var updatedText = PreserveLineEndings(text.ToString(), originalText);
+                    await RefactoringHelpers.WriteFileWithEncodingAsync(newDoc.FilePath!, updatedText, encoding, cancellationToken);
                     RefactoringHelpers.UpdateSolutionCache(newDoc);
                 }
             }
@@ -69,19 +70,43 @@ public static class RenameSymbolTool
             if (line.Value > 0 && line.Value <= text.Lines.Count && column.Value > 0)
             {
                 var pos = text.Lines[line.Value - 1].Start + column.Value - 1;
-                var token = root.FindToken(pos);
-                var node = token.Parent;
-                while (node != null)
-                {
-                    var sym = model.GetDeclaredSymbol(node) ?? model.GetSymbolInfo(node).Symbol;
-                    if (sym != null && sym.Name == name)
-                        return sym;
-                    node = node.Parent;
-                }
+                var symbolAtPosition = GetSymbolFromNode(model, root.FindToken(pos).Parent);
+                if (symbolAtPosition != null && symbolAtPosition.Name == name)
+                    return symbolAtPosition;
             }
+        }
+
+        foreach (var token in root.DescendantTokens().Where(t => t.ValueText == name || t.Text == name))
+        {
+            var symbolInDocument = GetSymbolFromNode(model, token.Parent);
+            if (symbolInDocument != null && symbolInDocument.Name == name)
+                return symbolInDocument;
         }
 
         var decls = await SymbolFinder.FindDeclarationsAsync(document.Project, name, false, cancellationToken);
         return decls.FirstOrDefault();
+    }
+
+    private static ISymbol? GetSymbolFromNode(SemanticModel model, SyntaxNode? node)
+    {
+        while (node != null)
+        {
+            var symbol = model.GetDeclaredSymbol(node) ?? model.GetSymbolInfo(node).Symbol;
+            if (symbol != null)
+                return symbol;
+
+            node = node.Parent;
+        }
+
+        return null;
+    }
+
+    private static string PreserveLineEndings(string updatedText, string originalText)
+    {
+        var normalizedUpdatedText = updatedText.Replace("\r\n", "\n");
+        if (originalText.Contains("\r\n"))
+            return normalizedUpdatedText.Replace("\n", "\r\n");
+
+        return normalizedUpdatedText;
     }
 }
