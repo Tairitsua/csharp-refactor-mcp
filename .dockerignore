@@ -1,0 +1,15 @@
+.git
+.vs
+.vscode
+**/bin
+**/obj
+**/TestResults
+**/*.user
+**/*.suo
+**/*.cache
+artifacts
+BenchmarkDotNet.Artifacts
+RefactorMCP.Tests/
+Demos/
+Examples/
+vscode-extension/

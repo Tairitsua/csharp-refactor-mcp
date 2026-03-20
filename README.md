@@ -12,6 +12,29 @@ Run the console application directly or host it as an MCP server:
 dotnet run --project RefactorMCP.ConsoleApp
 ```
 
+Build and run the Docker image as a stdio MCP server:
+
+```bash
+docker build -t refactor-mcp:local .
+docker run --rm -i -v /mnt/d:/mnt/d refactor-mcp:local
+```
+
+Run a simple JSON-mode smoke test inside the container:
+
+```bash
+docker run --rm -i refactor-mcp:local --json Version '{}'
+docker run --rm -i -v /mnt/d:/mnt/d refactor-mcp:local --json LoadSolution '{"solutionPath":"/mnt/d/Code/refactor-mcp/RefactorMCP.slnx"}'
+```
+
+Register the container with Codex as a local stdio MCP server:
+
+```bash
+codex mcp add refactor-mcp -- \
+  docker run --rm -i \
+  -v /mnt/d:/mnt/d \
+  refactor-mcp:local
+```
+
 Build or test the repo from the root:
 
 ```bash
