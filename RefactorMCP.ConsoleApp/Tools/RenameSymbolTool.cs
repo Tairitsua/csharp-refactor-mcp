@@ -73,19 +73,46 @@ public static class RenameSymbolTool
             if (symbol == null)
                 throw new McpException($"Error: Symbol '{oldName}' not found");
 
+            symbol = await SymbolClosure.CanonicalizeAsync(symbol, symbolSolution, cancellationToken);
+
             var options = new SymbolRenameOptions();
-            var razorProjectedChanges = razorContext.HasRazorDocuments
-                ? await RazorSourceMappingService.CreateChangeSetAsync(
-                    symbol,
-                    symbolSolution,
-                    oldName,
+            var renameTargets = await SymbolClosure.GetOrderedRenameTargetsAsync(symbol, symbolSolution, cancellationToken);
+            var workingSolution = symbolSolution;
+            var razorProjectedChangeSets = new List<RazorProjectedChangeSet>();
+
+            foreach (var renameTarget in renameTargets)
+            {
+                var currentTarget = await ResolveSymbolAsync(renameTarget, workingSolution, cancellationToken);
+                if (currentTarget == null || !string.Equals(currentTarget.Name, oldName, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                if (razorContext.HasRazorDocuments)
+                {
+                    razorProjectedChangeSets.Add(
+                        await RazorSourceMappingService.CreateChangeSetAsync(
+                            currentTarget,
+                            workingSolution,
+                            oldName,
+                            newName,
+                            cancellationToken));
+                }
+
+                workingSolution = await Renamer.RenameSymbolAsync(
+                    workingSolution,
+                    currentTarget,
+                    options,
                     newName,
-                    cancellationToken)
+                    cancellationToken);
+            }
+
+            var razorProjectedChanges = razorContext.HasRazorDocuments
+                ? RazorSourceMappingService.MergeChangeSets(razorProjectedChangeSets)
                 : new RazorProjectedChangeSet(
                     ImmutableDictionary<string, ImmutableArray<RazorProjectedEdit>>.Empty);
 
-            var renamed = await Renamer.RenameSymbolAsync(symbolSolution, symbol, options, newName, cancellationToken);
-            var changedDocuments = await CollectChangedDocumentsAsync(symbolSolution, renamed, cancellationToken);
+            var changedDocuments = await CollectChangedDocumentsAsync(symbolSolution, workingSolution, cancellationToken);
             var fileRenamePlans = await CreateFileRenamePlansAsync(
                 symbolSolution,
                 symbol,
@@ -154,6 +181,34 @@ public static class RenameSymbolTool
         }
 
         return writebacks;
+    }
+
+    private static async Task<ISymbol?> ResolveSymbolAsync(
+        ISymbol symbol,
+        Solution solution,
+        CancellationToken cancellationToken)
+    {
+        var declarationLocation = symbol.Locations.FirstOrDefault(location => location.IsInSource && location.SourceTree?.FilePath != null);
+        if (declarationLocation?.SourceTree?.FilePath != null)
+        {
+            var document = solution.GetDocument(declarationLocation.SourceTree);
+            if (document != null)
+            {
+                var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
+                var root = await document.GetSyntaxRootAsync(cancellationToken);
+                if (semanticModel != null && root != null)
+                {
+                    var node = root.FindToken(declarationLocation.SourceSpan.Start).Parent;
+                    var resolvedSymbol = SymbolResolution.GetSymbolFromNode(semanticModel, node);
+                    if (resolvedSymbol != null)
+                    {
+                        return await SymbolClosure.CanonicalizeAsync(resolvedSymbol, solution, cancellationToken);
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     private static async Task<IReadOnlyList<FileRenamePlan>> CreateFileRenamePlansAsync(

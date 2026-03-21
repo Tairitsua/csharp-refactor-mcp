@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.CodeAnalysis.Text;
 using ModelContextProtocol;
@@ -47,9 +48,9 @@ public static class FindUsagesTool
                 throw new McpException($"Error: Symbol '{symbolName}' not found");
             }
 
-            symbol = await SymbolFinder.FindSourceDefinitionAsync(symbol, symbolSolution, cancellationToken) ?? symbol;
+            symbol = await SymbolClosure.CanonicalizeAsync(symbol, symbolSolution, cancellationToken);
 
-            var referencedSymbols = await SymbolFinder.FindReferencesAsync(symbol, symbolSolution, cancellationToken);
+            var referencedSymbols = await FindReferencesAcrossClosureAsync(symbol, symbolSolution, cancellationToken);
             var sourceTextCache = new Dictionary<string, SourceText>(StringComparer.OrdinalIgnoreCase);
             var declarations = await CollectDeclarationLocationsAsync(
                 referencedSymbols,
@@ -87,6 +88,23 @@ public static class FindUsagesTool
         {
             throw new McpException($"Error finding usages: {ex.Message}", ex);
         }
+    }
+
+    private static async Task<IReadOnlyList<ReferencedSymbol>> FindReferencesAcrossClosureAsync(
+        ISymbol symbol,
+        Solution solution,
+        CancellationToken cancellationToken)
+    {
+        var referencedSymbols = new List<ReferencedSymbol>();
+        var closure = await SymbolClosure.GetRelatedSymbolsAsync(symbol, solution, cancellationToken);
+
+        foreach (var closureSymbol in closure)
+        {
+            referencedSymbols.AddRange(
+                await SymbolFinder.FindReferencesAsync(closureSymbol, solution, cancellationToken));
+        }
+
+        return referencedSymbols;
     }
 
     private static async Task<IReadOnlyList<FindUsageLocation>> CollectDeclarationLocationsAsync(
@@ -127,11 +145,17 @@ public static class FindUsagesTool
     {
         var seenLocations = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var references = new List<FindUsageLocation>();
+        var syntaxRootCache = new Dictionary<SyntaxTree, SyntaxNode>();
 
         foreach (var referencedSymbol in referencedSymbols)
         {
             foreach (var location in referencedSymbol.Locations)
             {
+                if (await IsDocumentationCommentReferenceAsync(location.Location, syntaxRootCache, cancellationToken))
+                {
+                    continue;
+                }
+
                 var usage = await TryCreateLocationAsync(location, solution, sourceTextCache, cancellationToken);
                 if (usage == null || !seenLocations.Add(CreateLocationKey(usage)))
                 {
@@ -143,6 +167,35 @@ public static class FindUsagesTool
         }
 
         return references;
+    }
+
+    private static async Task<bool> IsDocumentationCommentReferenceAsync(
+        Location location,
+        Dictionary<SyntaxTree, SyntaxNode> syntaxRootCache,
+        CancellationToken cancellationToken)
+    {
+        if (!location.IsInSource || location.SourceTree == null || location.SourceSpan.IsEmpty)
+        {
+            return false;
+        }
+
+        if (!syntaxRootCache.TryGetValue(location.SourceTree, out var root))
+        {
+            root = await location.SourceTree.GetRootAsync(cancellationToken);
+            syntaxRootCache[location.SourceTree] = root;
+        }
+
+        var token = root.FindToken(location.SourceSpan.Start, findInsideTrivia: true);
+        for (var node = token.Parent; node != null; node = node.Parent)
+        {
+            if (node.RawKind is (int)SyntaxKind.SingleLineDocumentationCommentTrivia or
+                (int)SyntaxKind.MultiLineDocumentationCommentTrivia)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static async Task<FindUsageLocation?> TryCreateLocationAsync(

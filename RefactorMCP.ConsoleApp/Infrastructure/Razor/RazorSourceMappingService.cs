@@ -27,22 +27,71 @@ internal static class RazorSourceMappingService
     {
         var editsByFile = new Dictionary<string, Dictionary<(int Start, int Length), RazorProjectedEdit>>(StringComparer.OrdinalIgnoreCase);
         var sourceTexts = new Dictionary<string, SourceText>(StringComparer.OrdinalIgnoreCase);
+        var closure = await SymbolClosure.GetRelatedSymbolsAsync(symbol, solution, cancellationToken);
 
-        foreach (var location in symbol.Locations)
+        foreach (var location in closure.SelectMany(currentSymbol => currentSymbol.Locations))
         {
             await AddMappedEditAsync(location, oldName, newName, editsByFile, sourceTexts, cancellationToken);
         }
 
-        var references = await SymbolFinder.FindReferencesAsync(symbol, solution, cancellationToken);
-        foreach (var referencedSymbol in references)
+        foreach (var closureSymbol in closure)
         {
-            foreach (var location in referencedSymbol.Locations)
+            var references = await SymbolFinder.FindReferencesAsync(closureSymbol, solution, cancellationToken);
+            foreach (var referencedSymbol in references)
             {
-                await AddMappedEditAsync(location.Location, oldName, newName, editsByFile, sourceTexts, cancellationToken);
+                foreach (var location in referencedSymbol.Locations)
+                {
+                    await AddMappedEditAsync(location.Location, oldName, newName, editsByFile, sourceTexts, cancellationToken);
+                }
             }
         }
 
         var immutableEdits = editsByFile.ToImmutableDictionary(
+            pair => pair.Value.Values.First().SourceFilePath,
+            pair => pair.Value.Values
+                .OrderBy(edit => edit.Span.Start)
+                .ToImmutableArray(),
+            StringComparer.OrdinalIgnoreCase);
+
+        ValidateProjectedEdits(immutableEdits);
+        return new RazorProjectedChangeSet(immutableEdits);
+    }
+
+    internal static RazorProjectedChangeSet MergeChangeSets(IEnumerable<RazorProjectedChangeSet> changeSets)
+    {
+        var mergedEdits = new Dictionary<string, Dictionary<(int Start, int Length), RazorProjectedEdit>>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var changeSet in changeSets)
+        {
+            foreach (var (sourceFilePath, edits) in changeSet.EditsByFile)
+            {
+                var normalizedPath = RefactoringHelpers.NormalizePathForComparison(sourceFilePath);
+                if (!mergedEdits.TryGetValue(normalizedPath, out var fileEdits))
+                {
+                    fileEdits = new Dictionary<(int Start, int Length), RazorProjectedEdit>();
+                    mergedEdits[normalizedPath] = fileEdits;
+                }
+
+                foreach (var edit in edits)
+                {
+                    var key = (edit.Span.Start, edit.Span.Length);
+                    if (fileEdits.TryGetValue(key, out var existingEdit))
+                    {
+                        if (!string.Equals(existingEdit.NewText, edit.NewText, StringComparison.Ordinal))
+                        {
+                            throw new McpException(
+                                $"Error: Razor rename produced conflicting edits for '{sourceFilePath}'");
+                        }
+
+                        continue;
+                    }
+
+                    fileEdits[key] = edit;
+                }
+            }
+        }
+
+        var immutableEdits = mergedEdits.ToImmutableDictionary(
             pair => pair.Value.Values.First().SourceFilePath,
             pair => pair.Value.Values
                 .OrderBy(edit => edit.Span.Start)

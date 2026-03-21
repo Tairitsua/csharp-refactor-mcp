@@ -7,6 +7,14 @@ namespace RefactorMCP.Tests;
 
 public static class TestUtilities
 {
+    public sealed record CrossProjectGenericHandlerFixture(
+        string SolutionPath,
+        string InterfaceFile,
+        string BaseFile,
+        string OrderHandlerFile,
+        string UserHandlerFile,
+        string ConsumerFile);
+
     private static readonly string[] SolutionFileNames = ["RefactorMCP.slnx", "RefactorMCP.sln"];
     private static readonly string[] ExampleCodeRelativePaths =
     [
@@ -73,8 +81,133 @@ public static class TestUtilities
         CopyDirectory(fixtureSource, fixtureDestination);
 
         var solutionPath = Directory.GetFiles(fixtureDestination, "*.slnx", SearchOption.TopDirectoryOnly)[0];
-        await RunDotNetBuildAsync(solutionPath);
+        await RunDotNetAsync(Path.GetDirectoryName(solutionPath)!, "build", "-nodeReuse:false", solutionPath);
         return solutionPath;
+    }
+
+    public static async Task<CrossProjectGenericHandlerFixture> PrepareCrossProjectGenericHandlerFixtureAsync(string destinationRoot)
+    {
+        var fixtureRoot = Path.Combine(destinationRoot, "CrossProjectGenericHandlerFixture");
+        var solutionName = "CrossProjectGenericHandlerFixture";
+        var contractsDirectory = Path.Combine(fixtureRoot, "Contracts");
+        var handlersDirectory = Path.Combine(fixtureRoot, "Handlers");
+
+        Directory.CreateDirectory(contractsDirectory);
+        Directory.CreateDirectory(handlersDirectory);
+
+        var contractsProjectPath = Path.Combine(contractsDirectory, "Contracts.csproj");
+        var handlersProjectPath = Path.Combine(handlersDirectory, "Handlers.csproj");
+        var interfaceFile = Path.Combine(contractsDirectory, "IMoDistributedEventHandler.cs");
+        var baseFile = Path.Combine(handlersDirectory, "OurEventHandler.cs");
+        var eventsFile = Path.Combine(handlersDirectory, "Events.cs");
+        var orderHandlerFile = Path.Combine(handlersDirectory, "OrderHandler.cs");
+        var userHandlerFile = Path.Combine(handlersDirectory, "UserHandler.cs");
+        var consumerFile = Path.Combine(handlersDirectory, "Dispatcher.cs");
+
+        await CreateTestFile(contractsProjectPath, """
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>
+""");
+
+        await CreateTestFile(handlersProjectPath, """
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>
+""");
+
+        await CreateTestFile(interfaceFile, """
+using System.Threading.Tasks;
+
+namespace Contracts;
+
+public interface IMoDistributedEventHandler<in TEvent>
+{
+    Task HandleEventAsync(TEvent eventData);
+}
+""");
+
+        await CreateTestFile(baseFile, """
+using System.Threading.Tasks;
+using Contracts;
+
+namespace Handlers;
+
+/// <summary>
+/// Inherit and implement <see cref="HandleEventAsync"/>.
+/// </summary>
+public abstract class OurDomainEventHandler<THandler, TEvent> : IMoDistributedEventHandler<TEvent>
+    where THandler : OurDomainEventHandler<THandler, TEvent>
+{
+    public abstract Task HandleEventAsync(TEvent eventData);
+}
+""");
+
+        await CreateTestFile(eventsFile, """
+namespace Handlers;
+
+public sealed record OrderCreated;
+public sealed record UserCreated;
+""");
+
+        await CreateTestFile(orderHandlerFile, """
+using System.Threading.Tasks;
+
+namespace Handlers;
+
+public sealed class OrderHandler : OurDomainEventHandler<OrderHandler, OrderCreated>
+{
+    public override Task HandleEventAsync(OrderCreated eventData) => Task.CompletedTask;
+}
+""");
+
+        await CreateTestFile(userHandlerFile, """
+using System.Threading.Tasks;
+
+namespace Handlers;
+
+public sealed class UserHandler : OurDomainEventHandler<UserHandler, UserCreated>
+{
+    public override Task HandleEventAsync(UserCreated eventData) => Task.CompletedTask;
+}
+""");
+
+        await CreateTestFile(consumerFile, """
+using System.Threading.Tasks;
+using Contracts;
+
+namespace Handlers;
+
+public static class Dispatcher
+{
+    public static Task Dispatch(IMoDistributedEventHandler<OrderCreated> handler, OrderCreated eventData)
+        => handler.HandleEventAsync(eventData);
+}
+""");
+
+        await RunDotNetAsync(fixtureRoot, "new", "sln", "--name", solutionName);
+
+        var solutionPath = Directory.GetFiles(fixtureRoot, "*.sln*", SearchOption.TopDirectoryOnly)[0];
+        await RunDotNetAsync(fixtureRoot, "sln", solutionPath, "add", contractsProjectPath);
+        await RunDotNetAsync(fixtureRoot, "sln", solutionPath, "add", handlersProjectPath);
+        await RunDotNetAsync(fixtureRoot, "add", handlersProjectPath, "reference", contractsProjectPath);
+        await RunDotNetAsync(fixtureRoot, "build", "-nodeReuse:false", solutionPath);
+
+        return new CrossProjectGenericHandlerFixture(
+            solutionPath,
+            interfaceFile,
+            baseFile,
+            orderHandlerFile,
+            userHandlerFile,
+            consumerFile);
     }
 
     private static void CopyDirectory(string sourceDirectory, string destinationDirectory)
@@ -96,18 +229,20 @@ public static class TestUtilities
         }
     }
 
-    private static async Task RunDotNetBuildAsync(string solutionPath)
+    public static async Task RunDotNetAsync(string workingDirectory, params string[] arguments)
     {
         var startInfo = new ProcessStartInfo("dotnet")
         {
-            WorkingDirectory = Path.GetDirectoryName(solutionPath)!,
+            WorkingDirectory = workingDirectory,
             RedirectStandardError = true,
             RedirectStandardOutput = true,
             UseShellExecute = false
         };
-        startInfo.ArgumentList.Add("build");
-        startInfo.ArgumentList.Add("-nodeReuse:false");
-        startInfo.ArgumentList.Add(solutionPath);
+
+        foreach (var argument in arguments)
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
 
         using var process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("Failed to start dotnet build");
@@ -119,7 +254,7 @@ public static class TestUtilities
         if (process.ExitCode != 0)
         {
             throw new InvalidOperationException(
-                $"dotnet build failed for '{solutionPath}'.{Environment.NewLine}{standardOutput}{Environment.NewLine}{standardError}");
+                $"dotnet {string.Join(' ', arguments)} failed in '{workingDirectory}'.{Environment.NewLine}{standardOutput}{Environment.NewLine}{standardError}");
         }
     }
 
