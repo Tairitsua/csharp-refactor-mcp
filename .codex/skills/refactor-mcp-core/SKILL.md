@@ -1,6 +1,6 @@
 ---
 name: refactor-mcp-core
-description: Use this skill when the user wants to work with refactor-mcp's common workflow: rename symbol, find usages, move type to a separate file, 查找引用, 查找用法, 重命名符号, or 将类型拆到单独文件. It also applies when the user needs to load a large solution with progress before using those tools.
+description: "Use this skill when the user wants to work with refactor-mcp's common workflow: rename symbol, find usages, move type to a separate file, 查找引用, 查找用法, 重命名符号, or 将类型拆到单独文件. It also applies when the user needs to load a large solution with progress before using those tools."
 ---
 
 # Refactor MCP Core
