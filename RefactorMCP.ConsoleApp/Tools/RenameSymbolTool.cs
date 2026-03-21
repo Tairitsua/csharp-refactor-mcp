@@ -1,6 +1,7 @@
 using ModelContextProtocol.Server;
 using ModelContextProtocol;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Rename;
 using Microsoft.CodeAnalysis.FindSymbols;
 using System.ComponentModel;
@@ -11,6 +12,7 @@ using System.Threading;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text;
+using System;
 
 [McpServerToolType]
 public static class RenameSymbolTool
@@ -82,6 +84,15 @@ public static class RenameSymbolTool
 
             var renamed = await Renamer.RenameSymbolAsync(solution, symbol, options, newName, cancellationToken);
             var changedDocuments = await CollectChangedDocumentsAsync(solution, renamed, cancellationToken);
+            var fileRenamePlans = await CreateFileRenamePlansAsync(
+                solution,
+                symbol,
+                oldName,
+                newName,
+                changedDocuments,
+                cancellationToken);
+            ValidateFileRenamePlans(fileRenamePlans);
+            var requiresCacheInvalidation = razorProjectedChanges.HasEdits || fileRenamePlans.Count > 0;
 
             foreach (var changedDocument in changedDocuments)
             {
@@ -91,13 +102,19 @@ public static class RenameSymbolTool
                     changedDocument.Encoding,
                     cancellationToken);
 
-                if (!razorProjectedChanges.HasEdits)
+                if (!requiresCacheInvalidation)
                     RefactoringHelpers.UpdateSolutionCache(changedDocument.Document);
             }
+
+            await ApplyFileRenamePlansAsync(fileRenamePlans, cancellationToken);
 
             if (razorProjectedChanges.HasEdits)
             {
                 await RazorSourceMappingService.ApplyProjectedChangesAsync(razorProjectedChanges, cancellationToken);
+            }
+
+            if (requiresCacheInvalidation)
+            {
                 RefactoringHelpers.InvalidateSolutionCaches(solutionPath);
             }
 
@@ -177,5 +194,144 @@ public static class RenameSymbolTool
         return writebacks;
     }
 
+    private static async Task<IReadOnlyList<FileRenamePlan>> CreateFileRenamePlansAsync(
+        Solution originalSolution,
+        ISymbol symbol,
+        string oldName,
+        string newName,
+        IReadOnlyList<ChangedDocumentWriteback> changedDocuments,
+        CancellationToken cancellationToken)
+    {
+        if (symbol is not INamedTypeSymbol namedType)
+            return [];
+
+        var declarationDocuments = namedType.DeclaringSyntaxReferences
+            .Select(reference => originalSolution.GetDocument(reference.SyntaxTree))
+            .Where(document => document?.FilePath != null &&
+                               RazorDocumentClassifier.Classify(document.FilePath) == RazorDocumentKind.CSharp)
+            .Distinct()
+            .ToArray();
+
+        if (declarationDocuments.Length != 1)
+            return [];
+
+        var declarationDocument = declarationDocuments[0]!;
+        var declarationFilePath = declarationDocument.FilePath!;
+        if (!string.Equals(Path.GetFileNameWithoutExtension(declarationFilePath), oldName, StringComparison.OrdinalIgnoreCase))
+            return [];
+
+        var root = await declarationDocument.GetSyntaxRootAsync(cancellationToken) as CompilationUnitSyntax;
+        var model = await declarationDocument.GetSemanticModelAsync(cancellationToken);
+        if (root == null || model == null)
+            return [];
+
+        var topLevelTypeDeclarations = GetTopLevelTypeDeclarations(root);
+        if (topLevelTypeDeclarations.Count != 1)
+            return [];
+
+        var declaredSymbol = GetDeclaredTypeSymbol(model, topLevelTypeDeclarations[0], cancellationToken);
+        if (declaredSymbol == null ||
+            !SymbolEqualityComparer.Default.Equals(declaredSymbol.OriginalDefinition, namedType.OriginalDefinition))
+            return [];
+
+        var changedDocument = changedDocuments.FirstOrDefault(doc =>
+            RefactoringHelpers.PathEquals(doc.FilePath, declarationFilePath));
+        if (changedDocument == null)
+            return [];
+
+        var renamedFilePath = Path.Combine(Path.GetDirectoryName(declarationFilePath)!, $"{newName}.cs");
+        if (string.Equals(declarationFilePath, renamedFilePath, StringComparison.Ordinal))
+            return [];
+
+        return [new FileRenamePlan(declarationFilePath, renamedFilePath, changedDocument.UpdatedText)];
+    }
+
+    private static void ValidateFileRenamePlans(IReadOnlyList<FileRenamePlan> fileRenamePlans)
+    {
+        var plannedTargets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var fileRenamePlan in fileRenamePlans)
+        {
+            if (!plannedTargets.Add(RefactoringHelpers.NormalizePathForComparison(fileRenamePlan.NewFilePath)))
+                throw new McpException($"Error: Multiple files would be renamed to '{fileRenamePlan.NewFilePath}'");
+
+            if (!RefactoringHelpers.PathEquals(fileRenamePlan.OldFilePath, fileRenamePlan.NewFilePath) &&
+                File.Exists(fileRenamePlan.NewFilePath))
+            {
+                throw new McpException($"Error: File {fileRenamePlan.NewFilePath} already exists");
+            }
+        }
+    }
+
+    private static Task ApplyFileRenamePlansAsync(
+        IReadOnlyList<FileRenamePlan> fileRenamePlans,
+        CancellationToken cancellationToken)
+    {
+        foreach (var fileRenamePlan in fileRenamePlans)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (RefactoringHelpers.PathEquals(fileRenamePlan.OldFilePath, fileRenamePlan.NewFilePath))
+            {
+                var tempFilePath = Path.Combine(
+                    Path.GetDirectoryName(fileRenamePlan.NewFilePath)!,
+                    $".rename-{Guid.NewGuid():N}.tmp");
+                File.Move(fileRenamePlan.OldFilePath, tempFilePath);
+                File.Move(tempFilePath, fileRenamePlan.NewFilePath);
+            }
+            else
+            {
+                File.Move(fileRenamePlan.OldFilePath, fileRenamePlan.NewFilePath);
+            }
+
+            RefactoringHelpers.RenameFileCaches(
+                fileRenamePlan.OldFilePath,
+                fileRenamePlan.NewFilePath,
+                fileRenamePlan.UpdatedText);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private static List<MemberDeclarationSyntax> GetTopLevelTypeDeclarations(CompilationUnitSyntax root)
+    {
+        var declarations = new List<MemberDeclarationSyntax>();
+        CollectTopLevelTypeDeclarations(root.Members, declarations);
+        return declarations;
+    }
+
+    private static void CollectTopLevelTypeDeclarations(
+        SyntaxList<MemberDeclarationSyntax> members,
+        List<MemberDeclarationSyntax> declarations)
+    {
+        foreach (var member in members)
+        {
+            switch (member)
+            {
+                case BaseTypeDeclarationSyntax:
+                case DelegateDeclarationSyntax:
+                    declarations.Add(member);
+                    break;
+                case NamespaceDeclarationSyntax namespaceDeclaration:
+                    CollectTopLevelTypeDeclarations(namespaceDeclaration.Members, declarations);
+                    break;
+                case FileScopedNamespaceDeclarationSyntax fileScopedNamespace:
+                    CollectTopLevelTypeDeclarations(fileScopedNamespace.Members, declarations);
+                    break;
+            }
+        }
+    }
+
+    private static INamedTypeSymbol? GetDeclaredTypeSymbol(
+        SemanticModel semanticModel,
+        MemberDeclarationSyntax declaration,
+        CancellationToken cancellationToken) =>
+        declaration switch
+        {
+            BaseTypeDeclarationSyntax baseType => semanticModel.GetDeclaredSymbol(baseType, cancellationToken) as INamedTypeSymbol,
+            DelegateDeclarationSyntax delegateDeclaration => semanticModel.GetDeclaredSymbol(delegateDeclaration, cancellationToken) as INamedTypeSymbol,
+            _ => null
+        };
+
     private sealed record ChangedDocumentWriteback(Document Document, string FilePath, string UpdatedText, Encoding Encoding);
+    private sealed record FileRenamePlan(string OldFilePath, string NewFilePath, string UpdatedText);
 }

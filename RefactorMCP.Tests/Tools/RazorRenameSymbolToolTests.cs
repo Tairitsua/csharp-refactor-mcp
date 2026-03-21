@@ -222,17 +222,19 @@ public class RazorRenameSymbolToolTests : RefactorMCP.Tests.TestBase
         await LoadSolutionTool.LoadSolution(solutionPath, null, CancellationToken.None);
 
         var projectRoot = Path.Combine(Path.GetDirectoryName(solutionPath)!, "BlazorRenameFixture");
-        var typeFile = Path.Combine(projectRoot, "Support", "ProbeWidget.cs");
+        var originalTypeFile = Path.Combine(projectRoot, "Support", "ProbeWidget.cs");
+        var renamedTypeFile = Path.Combine(projectRoot, "Support", "ProbeDisplayWidget.cs");
         var razorFile = Path.Combine(projectRoot, "Components", "Pages", "TypeRenameDemo.razor");
 
         var result = await RenameSymbolTool.RenameSymbol(
             solutionPath,
-            typeFile,
+            originalTypeFile,
             "ProbeWidget",
             "ProbeDisplayWidget");
 
         Assert.Contains("Successfully renamed", result);
-        Assert.Contains("ProbeDisplayWidget", await File.ReadAllTextAsync(typeFile));
+        Assert.False(File.Exists(originalTypeFile));
+        Assert.Contains("ProbeDisplayWidget", await File.ReadAllTextAsync(renamedTypeFile));
         Assert.Contains("ProbeDisplayWidget", await File.ReadAllTextAsync(razorFile));
         Assert.DoesNotContain("private ProbeWidget Widget", await File.ReadAllTextAsync(razorFile));
     }
@@ -247,7 +249,8 @@ public class RazorRenameSymbolToolTests : RefactorMCP.Tests.TestBase
 
         var projectRoot = Path.Combine(Path.GetDirectoryName(solutionPath)!, "BlazorRenameFixture");
         var razorFile = Path.Combine(projectRoot, "Components", "Pages", "TypeRenameDemo.razor");
-        var typeFile = Path.Combine(projectRoot, "Support", "ProbeWidget.cs");
+        var originalTypeFile = Path.Combine(projectRoot, "Support", "ProbeWidget.cs");
+        var renamedTypeFile = Path.Combine(projectRoot, "Support", "ProbeFinalWidget.cs");
 
         var result = await RenameSymbolTool.RenameSymbol(
             solutionPath,
@@ -257,7 +260,8 @@ public class RazorRenameSymbolToolTests : RefactorMCP.Tests.TestBase
 
         Assert.Contains("Successfully renamed", result);
         Assert.Contains("ProbeFinalWidget", await File.ReadAllTextAsync(razorFile));
-        Assert.Contains("ProbeFinalWidget", await File.ReadAllTextAsync(typeFile));
+        Assert.False(File.Exists(originalTypeFile));
+        Assert.Contains("ProbeFinalWidget", await File.ReadAllTextAsync(renamedTypeFile));
         Assert.DoesNotContain("private ProbeWidget Widget", await File.ReadAllTextAsync(razorFile));
     }
 }

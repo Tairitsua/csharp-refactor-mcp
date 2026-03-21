@@ -138,6 +138,129 @@ public class Consumer
     }
 
     [Fact]
+    public async Task RenameSymbol_SingleTypeClassFile_RenamesFileToMatchClass()
+    {
+        const string initialCode = """
+public class OldName
+{
+    public void Run() { }
+}
+""";
+
+        const string expectedCode = """
+public class NewName
+{
+    public void Run() { }
+}
+""";
+
+        await LoadSolutionTool.LoadSolution(SolutionPath, null, CancellationToken.None);
+        var originalFile = Path.Combine(TestOutputPath, "OldName.cs");
+        var renamedFile = Path.Combine(TestOutputPath, "NewName.cs");
+        await TestUtilities.CreateTestFile(originalFile, initialCode);
+        var solution = await RefactoringHelpers.GetOrLoadSolution(SolutionPath);
+        var project = solution.Projects.First();
+        RefactoringHelpers.AddDocumentToProject(project, originalFile);
+
+        var result = await RenameSymbolTool.RenameSymbol(
+            SolutionPath,
+            originalFile,
+            "OldName",
+            "NewName");
+
+        Assert.Contains("Successfully renamed", result);
+        Assert.False(File.Exists(originalFile));
+        Assert.True(File.Exists(renamedFile));
+        var fileContent = await File.ReadAllTextAsync(renamedFile);
+        Assert.Equal(NormalizeLineEndings(expectedCode), NormalizeLineEndings(fileContent));
+    }
+
+    [Fact]
+    public async Task RenameSymbol_MultipleTopLevelTypes_DoesNotRenameFile()
+    {
+        const string initialCode = """
+public class OldName
+{
+}
+
+public class Helper
+{
+}
+""";
+
+        const string expectedCode = """
+public class NewName
+{
+}
+
+public class Helper
+{
+}
+""";
+
+        await LoadSolutionTool.LoadSolution(SolutionPath, null, CancellationToken.None);
+        var originalFile = Path.Combine(TestOutputPath, "OldName.cs");
+        var renamedFile = Path.Combine(TestOutputPath, "NewName.cs");
+        await TestUtilities.CreateTestFile(originalFile, initialCode);
+        var solution = await RefactoringHelpers.GetOrLoadSolution(SolutionPath);
+        var project = solution.Projects.First();
+        RefactoringHelpers.AddDocumentToProject(project, originalFile);
+
+        var result = await RenameSymbolTool.RenameSymbol(
+            SolutionPath,
+            originalFile,
+            "OldName",
+            "NewName");
+
+        Assert.Contains("Successfully renamed", result);
+        Assert.True(File.Exists(originalFile));
+        Assert.False(File.Exists(renamedFile));
+        var fileContent = await File.ReadAllTextAsync(originalFile);
+        Assert.Equal(NormalizeLineEndings(expectedCode), NormalizeLineEndings(fileContent));
+    }
+
+    [Fact]
+    public async Task RenameSymbol_SingleTypeClassFile_FailsWhenTargetFileExists()
+    {
+        const string sourceCode = """
+public class OldName
+{
+}
+""";
+
+        const string conflictingCode = """
+public class Existing
+{
+}
+""";
+
+        await LoadSolutionTool.LoadSolution(SolutionPath, null, CancellationToken.None);
+        var originalFile = Path.Combine(TestOutputPath, "OldName.cs");
+        var conflictingFile = Path.Combine(TestOutputPath, "NewName.cs");
+        await TestUtilities.CreateTestFile(originalFile, sourceCode);
+        await TestUtilities.CreateTestFile(conflictingFile, conflictingCode);
+        var solution = await RefactoringHelpers.GetOrLoadSolution(SolutionPath);
+        var project = solution.Projects.First();
+        RefactoringHelpers.AddDocumentToProject(project, originalFile);
+        solution = await RefactoringHelpers.GetOrLoadSolution(SolutionPath);
+        project = solution.Projects.First();
+        RefactoringHelpers.AddDocumentToProject(project, conflictingFile);
+
+        var exception = await Assert.ThrowsAsync<McpException>(() =>
+            RenameSymbolTool.RenameSymbol(
+                SolutionPath,
+                originalFile,
+                "OldName",
+                "NewName"));
+
+        Assert.Contains("already exists", exception.Message);
+        Assert.True(File.Exists(originalFile));
+        Assert.True(File.Exists(conflictingFile));
+        Assert.Contains("public class OldName", await File.ReadAllTextAsync(originalFile));
+        Assert.Contains("public class Existing", await File.ReadAllTextAsync(conflictingFile));
+    }
+
+    [Fact]
     public async Task RenameSymbol_Method_RenamesMethodAndCalls()
     {
         const string initialCode = """

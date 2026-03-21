@@ -63,7 +63,7 @@ For usage examples see [EXAMPLES.md](./EXAMPLES.md).
 
 ## Available Refactorings
 
-- **Rename Symbol** – rename a symbol across the solution using Roslyn. Phase 1 includes source-mapped Razor rename support for `RenameSymbol` across `.cs`, `.razor`, `.razor.cs`, `.cshtml`, and `.cshtml.cs` when the edit can be mapped safely back to the original Razor source. `_Imports.razor` and `_ViewImports.cshtml` are explicit unsupported entry points, and unsupported Razor spans fail safely instead of applying partial edits.
+- **Rename Symbol** – rename a symbol across the solution using Roslyn. Phase 1 includes source-mapped Razor rename support for `RenameSymbol` across `.cs`, `.razor`, `.razor.cs`, `.cshtml`, and `.cshtml.cs` when the edit can be mapped safely back to the original Razor source. When a top-level type rename comes from a single-type `.cs` file whose filename matches the original type name, the file is renamed to match the new type name as well. `_Imports.razor` and `_ViewImports.cshtml` are explicit unsupported entry points, and unsupported Razor spans fail safely instead of applying partial edits.
 - **Extract Method** – create a new method from selected code and replace the original with a call (expression-bodied methods are not supported).
 - **Introduce Field/Parameter/Variable** – turn expressions into new members; fails if a field already exists.
 - **Convert to Static** – make instance methods static using parameters or an instance argument.

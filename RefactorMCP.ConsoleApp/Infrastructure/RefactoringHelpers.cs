@@ -427,6 +427,23 @@ internal static class RefactoringHelpers
         ModelCache.Set(filePath, model);
     }
 
+    internal static void RemoveFileCaches(string filePath)
+    {
+        SyntaxTreeCache.Remove(filePath);
+        ModelCache.Remove(filePath);
+    }
+
+    internal static void RenameFileCaches(string oldFilePath, string newFilePath, string newText)
+    {
+        RemoveFileCaches(oldFilePath);
+        RemoveFileCaches(newFilePath);
+
+        if (string.Equals(Path.GetExtension(newFilePath), ".cs", StringComparison.OrdinalIgnoreCase))
+        {
+            UpdateFileCaches(newFilePath, newText);
+        }
+    }
+
     internal static async Task<(string Text, Encoding Encoding)> ReadFileWithEncodingAsync(
         string filePath,
         CancellationToken cancellationToken = default)

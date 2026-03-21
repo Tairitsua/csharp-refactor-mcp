@@ -921,7 +921,7 @@ public class Person : IPerson
 
 ## 16. Rename Symbol
 
-**Purpose**: Rename a field or method across the entire file.
+**Purpose**: Rename a symbol across the solution. For top-level type renames, a single-type `.cs` file named after the original type is renamed to match the new type name.
 
 ### Example
 **Before** (excerpt from `ExampleCode.cs`):
