@@ -30,7 +30,9 @@ public static class StringProcessorExtensions
     }
 }";
         var output = ConvertToExtensionMethodTool.ConvertToExtensionMethodInSource(input, "FormatText", null);
-        Assert.Equal(expected, output.Trim());
+        Assert.Equal(
+            TestUtilities.NormalizeLineEndings(expected),
+            TestUtilities.NormalizeLineEndings(output.Trim()));
     }
 
     [Fact]
@@ -64,7 +66,9 @@ public static class StringProcessorExtensions
     }
 }";
         var output = ConvertToExtensionMethodTool.ConvertToExtensionMethodInSource(input, "FormatText", "StringProcessorExtensions");
-        Assert.Equal(expected, output.Trim());
+        Assert.Equal(
+            TestUtilities.NormalizeLineEndings(expected),
+            TestUtilities.NormalizeLineEndings(output.Trim()));
     }
 
     [Fact]
@@ -88,7 +92,9 @@ public static class StringProcessorExtensions
     }
 }";
         var output = ConvertToStaticWithInstanceTool.ConvertToStaticWithInstanceInSource(input, "GetDataCount", "instance");
-        Assert.Equal(expected, output.Trim());
+        Assert.Equal(
+            TestUtilities.NormalizeLineEndings(expected),
+            TestUtilities.NormalizeLineEndings(output.Trim()));
     }
 
     [Fact]
@@ -112,7 +118,9 @@ public static class StringProcessorExtensions
     }
 }";
         var output = ConvertToStaticWithParametersTool.ConvertToStaticWithParametersInSource(input, "MultiplyValue");
-        Assert.Equal(expected, output.Trim());
+        Assert.Equal(
+            TestUtilities.NormalizeLineEndings(expected),
+            TestUtilities.NormalizeLineEndings(output.Trim()));
     }
 
     [Fact]
@@ -136,7 +144,9 @@ public static class StringProcessorExtensions
     }
 }";
         var output = ConvertToStaticWithParametersTool.ConvertToStaticWithParametersInSource(input, "MultiplyValue");
-        Assert.Equal(expected, output.Trim());
+        Assert.Equal(
+            TestUtilities.NormalizeLineEndings(expected),
+            TestUtilities.NormalizeLineEndings(output.Trim()));
     }
 
     [Fact]
@@ -163,7 +173,9 @@ public interface IRoomPick
     object GetResProfile(int id);
 }";
         var output = ConvertToStaticWithInstanceTool.ConvertToStaticWithInstanceInSource(input, "GetResProfile", "room");
-        Assert.Equal(expected, output.Trim());
+        Assert.Equal(
+            TestUtilities.NormalizeLineEndings(expected),
+            TestUtilities.NormalizeLineEndings(output.Trim()));
         Assert.DoesNotContain("IRoomPick.", output);
     }
 }

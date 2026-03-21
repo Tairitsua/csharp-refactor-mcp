@@ -19,7 +19,9 @@ public class SafeDeleteInSourceTests
 {
 }";
         var output = SafeDeleteTool.SafeDeleteFieldInSource(input, "configurationFlag");
-        Assert.Equal(expected, output.Trim());
+        Assert.Equal(
+            TestUtilities.NormalizeLineEndings(expected),
+            TestUtilities.NormalizeLineEndings(output.Trim()));
     }
 
     [Fact]
@@ -36,7 +38,9 @@ public class SafeDeleteInSourceTests
 {
 }";
         var output = SafeDeleteTool.SafeDeleteMethodInSource(input, "UnusedMethod");
-        Assert.Equal(expected, output.Trim());
+        Assert.Equal(
+            TestUtilities.NormalizeLineEndings(expected),
+            TestUtilities.NormalizeLineEndings(output.Trim()));
     }
 
     [Fact]
@@ -57,7 +61,9 @@ public class SafeDeleteInSourceTests
     }
 }";
         var output = SafeDeleteTool.SafeDeleteParameterInSource(input, "ProcessData", "unusedValue");
-        Assert.Equal(expected, output.Trim());
+        Assert.Equal(
+            TestUtilities.NormalizeLineEndings(expected),
+            TestUtilities.NormalizeLineEndings(output.Trim()));
     }
 
     [Fact]
@@ -79,7 +85,9 @@ public class SafeDeleteInSourceTests
     }
 }";
         var output = SafeDeleteTool.SafeDeleteVariableInSource(input, "5:9-5:30");
-        Assert.Equal(expected, output.Trim());
+        Assert.Equal(
+            TestUtilities.NormalizeLineEndings(expected),
+            TestUtilities.NormalizeLineEndings(output.Trim()));
     }
 
 }

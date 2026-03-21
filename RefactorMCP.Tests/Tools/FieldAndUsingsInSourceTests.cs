@@ -27,7 +27,9 @@ public class FieldAndUsingsInSourceTests
     }
 }";
         var output = MakeFieldReadonlyTool.MakeFieldReadonlyInSource(input, "formatPattern");
-        Assert.Equal(expected, output);
+        Assert.Equal(
+            TestUtilities.NormalizeLineEndings(expected),
+            TestUtilities.NormalizeLineEndings(output));
     }
 
     [Fact]
@@ -47,7 +49,9 @@ public class CleanupSample
     public void Say() => Console.WriteLine(""Hi"");
 }";
         var output = CleanupUsingsTool.CleanupUsingsInSource(input);
-        Assert.Equal(expected, output);
+        Assert.Equal(
+            TestUtilities.NormalizeLineEndings(expected),
+            TestUtilities.NormalizeLineEndings(output));
     }
 
     [Fact]
@@ -62,6 +66,8 @@ public class CleanupSample
     public string UserName { get; init; } = ""DefaultUser"";
 }";
         var output = TransformSetterToInitTool.TransformSetterToInitInSource(input, "UserName");
-        Assert.Equal(expected, output);
+        Assert.Equal(
+            TestUtilities.NormalizeLineEndings(expected),
+            TestUtilities.NormalizeLineEndings(output));
     }
 }

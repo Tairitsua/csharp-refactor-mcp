@@ -32,6 +32,8 @@ public class IntroduceParameterInSourceTests
     }
 }";
         var output = IntroduceParameterTool.IntroduceParameterInSource(input, "AddNumbers", "5:16-5:20", "result");
-        Assert.Equal(expected, output);
+        Assert.Equal(
+            TestUtilities.NormalizeLineEndings(expected),
+            TestUtilities.NormalizeLineEndings(output));
     }
 }

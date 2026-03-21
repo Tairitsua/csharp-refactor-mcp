@@ -23,7 +23,9 @@ public class IntroduceVariableInSourceTests
     }
 }";
         var output = IntroduceVariableTool.IntroduceVariableInSource(input, "5:17-5:21", "sum");
-        Assert.Equal(expected, output);
+        Assert.Equal(
+            TestUtilities.NormalizeLineEndings(expected),
+            TestUtilities.NormalizeLineEndings(output));
     }
 
     [Fact]
@@ -45,6 +47,8 @@ public class IntroduceVariableInSourceTests
     }
 }";
         var output = IntroduceVariableTool.IntroduceVariableInSource(input, "5:17-5:21", "sum");
-        Assert.Equal(expected, output);
+        Assert.Equal(
+            TestUtilities.NormalizeLineEndings(expected),
+            TestUtilities.NormalizeLineEndings(output));
     }
 }

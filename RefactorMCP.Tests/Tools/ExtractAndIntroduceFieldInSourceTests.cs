@@ -27,7 +27,9 @@ public class ExtractAndIntroduceFieldInSourceTests
     }
 }";
         var output = ExtractMethodTool.ExtractMethodInSource(input, "5:9-5:49", "DisplayProcessingMessage");
-        Assert.Equal(expected, output);
+        Assert.Equal(
+            TestUtilities.NormalizeLineEndings(expected),
+            TestUtilities.NormalizeLineEndings(output));
     }
 
     [Fact]
