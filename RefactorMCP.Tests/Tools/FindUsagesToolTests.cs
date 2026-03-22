@@ -611,6 +611,77 @@ public static class SyncRunner
     }
 
     [Fact]
+    public async Task FindUsages_OpenGenericInterfaceMethod_WithGenericTypeParameterCallSite_ReturnsReferences()
+    {
+        const string contractCode = """
+using System.Threading.Tasks;
+
+public interface IHandler<in TEvent>
+{
+    Task HandleAsync(TEvent eventData);
+}
+""";
+
+        const string implementationCode = """
+using System.Threading.Tasks;
+
+public abstract class BaseHandler<THandler, TEvent> : IHandler<TEvent>
+    where THandler : BaseHandler<THandler, TEvent>
+{
+    public abstract Task HandleAsync(TEvent eventData);
+}
+
+public sealed class ConcreteHandler<TEvent> : BaseHandler<ConcreteHandler<TEvent>, TEvent>
+{
+    public override Task HandleAsync(TEvent eventData) => Task.CompletedTask;
+}
+""";
+
+        const string consumerCode = """
+using System.Threading.Tasks;
+
+public static class GenericInvoker<TEvent>
+{
+    public static Task RunAsync(IHandler<TEvent> handler, TEvent eventData) =>
+        handler.HandleAsync(eventData);
+}
+""";
+
+        await LoadSolutionTool.LoadSolution(SolutionPath, null, CancellationToken.None);
+
+        var contractFile = Path.Combine(TestOutputPath, "IHandler.cs");
+        var implementationFile = Path.Combine(TestOutputPath, "BaseHandler.cs");
+        var consumerFile = Path.Combine(TestOutputPath, "GenericInvoker.cs");
+
+        await TestUtilities.CreateTestFile(contractFile, contractCode);
+        await TestUtilities.CreateTestFile(implementationFile, implementationCode);
+        await TestUtilities.CreateTestFile(consumerFile, consumerCode);
+
+        var solution = await RefactoringHelpers.GetOrLoadSolution(SolutionPath);
+        var project = solution.Projects.First();
+        RefactoringHelpers.AddDocumentToProject(project, contractFile);
+        RefactoringHelpers.AddDocumentToProject(project, implementationFile);
+        RefactoringHelpers.AddDocumentToProject(project, consumerFile);
+
+        var result = await FindUsagesTool.FindUsages(
+            SolutionPath,
+            implementationFile,
+            "HandleAsync",
+            line: 6,
+            column: 26,
+            maxResults: 20,
+            cancellationToken: CancellationToken.None);
+
+        Assert.Equal("HandleAsync", result.SymbolName);
+        Assert.Equal(3, result.Declarations.Count);
+        Assert.Contains(result.Declarations, location => RefactoringHelpers.PathEquals(location.FilePath, contractFile));
+        Assert.Contains(result.Declarations, location => RefactoringHelpers.PathEquals(location.FilePath, implementationFile) && location.Line == 6);
+        Assert.Contains(result.Declarations, location => RefactoringHelpers.PathEquals(location.FilePath, implementationFile) && location.Line == 11);
+        Assert.Single(result.References);
+        Assert.Contains(result.References, location => RefactoringHelpers.PathEquals(location.FilePath, consumerFile));
+    }
+
+    [Fact]
     public async Task FindUsages_AmbiguousMethodWithoutPosition_ThrowsMcpException()
     {
         const string interfacesCode = """
@@ -804,5 +875,189 @@ public static class LocalRunner
         Assert.DoesNotContain(
             result.References,
             location => location.LineText.Contains("see cref", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task FindUsages_CrossProjectGenericExecutorCall_ExcludesUnrelatedOverloadAndFindsMemberAccessReference()
+    {
+        var fixture = await TestUtilities.PrepareCrossProjectGenericExecutorFixtureAsync(TestOutputPath);
+        await LoadSolutionTool.LoadSolution(fixture.SolutionPath, null, CancellationToken.None);
+
+        var result = await FindUsagesTool.FindUsages(
+            fixture.SolutionPath,
+            fixture.BaseFile,
+            "HandleEventAsync",
+            line: 12,
+            column: 26,
+            maxResults: 20,
+            cancellationToken: CancellationToken.None);
+
+        var declarationSummary = string.Join(
+            " | ",
+            result.Declarations.Select(location =>
+                $"{Path.GetFileName(location.FilePath)}:{location.Line}:{location.Column}:{location.LineText}"));
+
+        Assert.Equal("HandleEventAsync", result.SymbolName);
+        Assert.True(result.Declarations.Count == 3, declarationSummary);
+        Assert.Contains(result.Declarations, location => RefactoringHelpers.PathEquals(location.FilePath, fixture.InterfaceFile));
+        Assert.Contains(result.Declarations, location => RefactoringHelpers.PathEquals(location.FilePath, fixture.BaseFile));
+        Assert.Contains(result.Declarations, location => RefactoringHelpers.PathEquals(location.FilePath, fixture.HandlerFile) && location.Line == 7);
+        Assert.DoesNotContain(result.Declarations, location => RefactoringHelpers.PathEquals(location.FilePath, fixture.HandlerFile) && location.Line == 9);
+        Assert.Single(result.References);
+        Assert.Contains(result.References, location => RefactoringHelpers.PathEquals(location.FilePath, fixture.ExecutorFile) && location.Line == 15);
+    }
+
+    [Fact]
+    public async Task FindUsages_CrossProjectGenericExecutorCall_FromInterfaceRoot_ExcludesUnrelatedOverloadAndFindsMemberAccessReference()
+    {
+        var fixture = await TestUtilities.PrepareCrossProjectGenericExecutorFixtureAsync(TestOutputPath);
+        await LoadSolutionTool.LoadSolution(fixture.SolutionPath, null, CancellationToken.None);
+
+        var result = await FindUsagesTool.FindUsages(
+            fixture.SolutionPath,
+            fixture.InterfaceFile,
+            "HandleEventAsync",
+            line: 7,
+            column: 10,
+            maxResults: 20,
+            cancellationToken: CancellationToken.None);
+
+        var declarationSummary = string.Join(
+            " | ",
+            result.Declarations.Select(location =>
+                $"{Path.GetFileName(location.FilePath)}:{location.Line}:{location.Column}:{location.LineText}"));
+
+        Assert.Equal("HandleEventAsync", result.SymbolName);
+        Assert.True(result.Declarations.Count == 3, declarationSummary);
+        Assert.Contains(result.Declarations, location => RefactoringHelpers.PathEquals(location.FilePath, fixture.InterfaceFile));
+        Assert.Contains(result.Declarations, location => RefactoringHelpers.PathEquals(location.FilePath, fixture.BaseFile));
+        Assert.Contains(result.Declarations, location => RefactoringHelpers.PathEquals(location.FilePath, fixture.HandlerFile) && location.Line == 7);
+        Assert.DoesNotContain(result.Declarations, location => RefactoringHelpers.PathEquals(location.FilePath, fixture.HandlerFile) && location.Line == 9);
+        Assert.Single(result.References);
+        Assert.Contains(result.References, location => RefactoringHelpers.PathEquals(location.FilePath, fixture.ExecutorFile) && location.Line == 15);
+    }
+
+    [Fact]
+    public async Task FindUsages_CrossProjectGenericExecutorPropertyCall_FindsMemberAccessReference()
+    {
+        var fixture = await TestUtilities.PrepareCrossProjectGenericExecutorPropertyFixtureAsync(TestOutputPath);
+        await LoadSolutionTool.LoadSolution(fixture.SolutionPath, null, CancellationToken.None);
+
+        var result = await FindUsagesTool.FindUsages(
+            fixture.SolutionPath,
+            fixture.BaseFile,
+            "HandleEventAsync",
+            line: 12,
+            column: 26,
+            maxResults: 20,
+            cancellationToken: CancellationToken.None);
+
+        var declarationSummary = string.Join(
+            " | ",
+            result.Declarations.Select(location =>
+                $"{Path.GetFileName(location.FilePath)}:{location.Line}:{location.Column}:{location.LineText}"));
+
+        Assert.Equal("HandleEventAsync", result.SymbolName);
+        Assert.True(result.Declarations.Count == 3, declarationSummary);
+        Assert.Contains(result.Declarations, location => RefactoringHelpers.PathEquals(location.FilePath, fixture.InterfaceFile) && location.Line == 11);
+        Assert.Contains(result.Declarations, location => RefactoringHelpers.PathEquals(location.FilePath, fixture.BaseFile) && location.Line == 12);
+        Assert.Contains(result.Declarations, location => RefactoringHelpers.PathEquals(location.FilePath, fixture.HandlerFile) && location.Line == 7);
+        Assert.DoesNotContain(result.Declarations, location => RefactoringHelpers.PathEquals(location.FilePath, fixture.HandlerFile) && location.Line == 9);
+        Assert.Single(result.References);
+        Assert.Contains(result.References, location => RefactoringHelpers.PathEquals(location.FilePath, fixture.ExecutorFile) && location.Line == 23);
+    }
+
+    [Fact]
+    public async Task FindUsages_CrossProjectGenericExecutorPropertyCall_WithUnresolvedAsReceiver_FindsMemberAccessReference()
+    {
+        var fixture = await TestUtilities.PrepareCrossProjectGenericExecutorPropertyFixtureAsync(TestOutputPath);
+        await TestUtilities.CreateTestFile(fixture.ExecutorFile, """
+using System;
+using System.Threading.Tasks;
+using Contracts;
+
+namespace Handlers;
+
+public interface IEventHandlerMethodExecutor
+{
+    Func<IMoEventHandler, object, Task> ExecutorAsync { get; }
+}
+
+public sealed class DistributedEventHandlerMethodExecutor<TEvent> : IEventHandlerMethodExecutor
+{
+    public Func<IMoEventHandler, object, Task> ExecutorAsync => (target, parameter) =>
+    {
+        if (parameter is TEvent eventData)
+        {
+            return target.As<IMoDistributedEventHandler<TEvent>>().HandleEventAsync(eventData);
+        }
+
+        return Task.CompletedTask;
+    };
+}
+""");
+
+        await LoadSolutionTool.LoadSolution(fixture.SolutionPath, null, CancellationToken.None);
+
+        var result = await FindUsagesTool.FindUsages(
+            fixture.SolutionPath,
+            fixture.BaseFile,
+            "HandleEventAsync",
+            line: 12,
+            column: 26,
+            maxResults: 20,
+            cancellationToken: CancellationToken.None);
+
+        Assert.Equal("HandleEventAsync", result.SymbolName);
+        Assert.Equal(3, result.Declarations.Count);
+        Assert.Single(result.References);
+        Assert.Contains(result.References, location => RefactoringHelpers.PathEquals(location.FilePath, fixture.ExecutorFile) && location.Line == 18);
+    }
+
+    [Fact]
+    public async Task FindUsages_CrossProjectGenericExecutorPropertyCallSite_WithUnresolvedAsReceiver_ResolvesByLineAndColumn()
+    {
+        var fixture = await TestUtilities.PrepareCrossProjectGenericExecutorPropertyFixtureAsync(TestOutputPath);
+        await TestUtilities.CreateTestFile(fixture.ExecutorFile, """
+using System;
+using System.Threading.Tasks;
+using Contracts;
+
+namespace Handlers;
+
+public interface IEventHandlerMethodExecutor
+{
+    Func<IMoEventHandler, object, Task> ExecutorAsync { get; }
+}
+
+public sealed class DistributedEventHandlerMethodExecutor<TEvent> : IEventHandlerMethodExecutor
+{
+    public Func<IMoEventHandler, object, Task> ExecutorAsync => (target, parameter) =>
+    {
+        if (parameter is TEvent eventData)
+        {
+            return target.As<IMoDistributedEventHandler<TEvent>>().HandleEventAsync(eventData);
+        }
+
+        return Task.CompletedTask;
+    };
+}
+""");
+
+        await LoadSolutionTool.LoadSolution(fixture.SolutionPath, null, CancellationToken.None);
+
+        var result = await FindUsagesTool.FindUsages(
+            fixture.SolutionPath,
+            fixture.ExecutorFile,
+            "HandleEventAsync",
+            line: 18,
+            column: 68,
+            maxResults: 20,
+            cancellationToken: CancellationToken.None);
+
+        Assert.Equal("HandleEventAsync", result.SymbolName);
+        Assert.Equal(3, result.Declarations.Count);
+        Assert.Single(result.References);
+        Assert.Contains(result.References, location => RefactoringHelpers.PathEquals(location.FilePath, fixture.ExecutorFile) && location.Line == 18);
     }
 }

@@ -1011,6 +1011,75 @@ public static class HandlerRunner
     }
 
     [Fact]
+    public async Task RenameSymbol_OpenGenericInterfaceMethod_WithGenericTypeParameterCallSite_RenamesReferences()
+    {
+        const string contractCode = """
+using System.Threading.Tasks;
+
+public interface IHandler<in TEvent>
+{
+    Task HandleAsync(TEvent eventData);
+}
+""";
+
+        const string implementationCode = """
+using System.Threading.Tasks;
+
+public abstract class BaseHandler<THandler, TEvent> : IHandler<TEvent>
+    where THandler : BaseHandler<THandler, TEvent>
+{
+    public abstract Task HandleAsync(TEvent eventData);
+}
+
+public sealed class ConcreteHandler<TEvent> : BaseHandler<ConcreteHandler<TEvent>, TEvent>
+{
+    public override Task HandleAsync(TEvent eventData) => Task.CompletedTask;
+}
+""";
+
+        const string consumerCode = """
+using System.Threading.Tasks;
+
+public static class GenericInvoker<TEvent>
+{
+    public static Task RunAsync(IHandler<TEvent> handler, TEvent eventData) =>
+        handler.HandleAsync(eventData);
+}
+""";
+
+        await LoadSolutionTool.LoadSolution(SolutionPath, null, CancellationToken.None);
+
+        var contractFile = Path.Combine(TestOutputPath, "IHandler.cs");
+        var implementationFile = Path.Combine(TestOutputPath, "BaseHandler.cs");
+        var consumerFile = Path.Combine(TestOutputPath, "GenericInvoker.cs");
+
+        await TestUtilities.CreateTestFile(contractFile, contractCode);
+        await TestUtilities.CreateTestFile(implementationFile, implementationCode);
+        await TestUtilities.CreateTestFile(consumerFile, consumerCode);
+
+        var solution = await RefactoringHelpers.GetOrLoadSolution(SolutionPath);
+        var project = solution.Projects.First();
+        RefactoringHelpers.AddDocumentToProject(project, contractFile);
+        RefactoringHelpers.AddDocumentToProject(project, implementationFile);
+        RefactoringHelpers.AddDocumentToProject(project, consumerFile);
+
+        var result = await RenameSymbolTool.RenameSymbol(
+            SolutionPath,
+            implementationFile,
+            "HandleAsync",
+            "ProcessAsync",
+            line: 6,
+            column: 26);
+
+        Assert.Contains("Successfully renamed", result);
+        Assert.Contains("Task ProcessAsync(TEvent eventData);", await File.ReadAllTextAsync(contractFile));
+        var implementationContent = await File.ReadAllTextAsync(implementationFile);
+        Assert.Equal(2, CountOccurrences(implementationContent, "ProcessAsync"));
+        Assert.DoesNotContain("HandleAsync", implementationContent);
+        Assert.Contains("handler.ProcessAsync(eventData)", await File.ReadAllTextAsync(consumerFile));
+    }
+
+    [Fact]
     public async Task RenameSymbol_AmbiguousMethodWithoutPosition_ThrowsMcpException()
     {
         const string interfacesCode = """
@@ -1331,10 +1400,175 @@ public class Sample
 
         Assert.Contains("Successfully renamed", result);
         Assert.Contains("Task ExecuteAsync(TEvent eventData);", await File.ReadAllTextAsync(fixture.InterfaceFile));
-        Assert.Contains("Task ExecuteAsync(TEvent eventData);", await File.ReadAllTextAsync(fixture.BaseFile));
-        Assert.Contains("override Task ExecuteAsync(OrderCreated eventData)", await File.ReadAllTextAsync(fixture.OrderHandlerFile));
-        Assert.Contains("override Task ExecuteAsync(UserCreated eventData)", await File.ReadAllTextAsync(fixture.UserHandlerFile));
+        Assert.Contains("Task ExecuteAsync(TEvent eto);", await File.ReadAllTextAsync(fixture.BaseFile));
+        Assert.Contains("override Task ExecuteAsync(OrderCreated orderCreated)", await File.ReadAllTextAsync(fixture.OrderHandlerFile));
+        Assert.Contains("override Task ExecuteAsync(UserCreated userCreated)", await File.ReadAllTextAsync(fixture.UserHandlerFile));
         Assert.Contains("handler.ExecuteAsync(eventData)", await File.ReadAllTextAsync(fixture.ConsumerFile));
+    }
+
+    [Fact]
+    public async Task RenameSymbol_CrossProjectGenericExecutorCall_DoesNotRenameUnrelatedOverload()
+    {
+        var fixture = await TestUtilities.PrepareCrossProjectGenericExecutorFixtureAsync(TestOutputPath);
+        await LoadSolutionTool.LoadSolution(fixture.SolutionPath, null, CancellationToken.None);
+
+        var result = await RenameSymbolTool.RenameSymbol(
+            fixture.SolutionPath,
+            fixture.BaseFile,
+            "HandleEventAsync",
+            "ExecuteAsync",
+            line: 12,
+            column: 26);
+
+        Assert.Contains("Successfully renamed", result);
+        Assert.Contains("Task ExecuteAsync(TEvent eventData);", await File.ReadAllTextAsync(fixture.InterfaceFile));
+        Assert.Contains("Task ExecuteAsync(TEvent eto);", await File.ReadAllTextAsync(fixture.BaseFile));
+
+        var handlerContent = await File.ReadAllTextAsync(fixture.HandlerFile);
+        Assert.Contains("override Task ExecuteAsync(OrderCreated orderCreated)", handlerContent);
+        Assert.Contains("Task HandleEventAsync(FlightDto flight)", handlerContent);
+
+        Assert.Contains(
+            "target.As<IMoDistributedEventHandler<TEvent>>().ExecuteAsync(eventData)",
+            await File.ReadAllTextAsync(fixture.ExecutorFile));
+    }
+
+    [Fact]
+    public async Task RenameSymbol_CrossProjectGenericExecutorPropertyCall_RenamesMemberAccessReference()
+    {
+        var fixture = await TestUtilities.PrepareCrossProjectGenericExecutorPropertyFixtureAsync(TestOutputPath);
+        await LoadSolutionTool.LoadSolution(fixture.SolutionPath, null, CancellationToken.None);
+
+        var result = await RenameSymbolTool.RenameSymbol(
+            fixture.SolutionPath,
+            fixture.InterfaceFile,
+            "HandleEventAsync",
+            "ExecuteAsync",
+            line: 11,
+            column: 10);
+
+        Assert.Contains("Successfully renamed", result);
+        Assert.Contains("Task ExecuteAsync(TEvent eventData);", await File.ReadAllTextAsync(fixture.InterfaceFile));
+        Assert.Contains("Task ExecuteAsync(TEvent eto);", await File.ReadAllTextAsync(fixture.BaseFile));
+
+        var handlerContent = await File.ReadAllTextAsync(fixture.HandlerFile);
+        Assert.Contains("override Task ExecuteAsync(OrderCreated orderCreated)", handlerContent);
+        Assert.Contains("Task HandleEventAsync(FlightDto flight)", handlerContent);
+
+        Assert.Contains(
+            "target.As<IMoDistributedEventHandler<TEvent>>().ExecuteAsync(eventData)",
+            await File.ReadAllTextAsync(fixture.ExecutorFile));
+    }
+
+    [Fact]
+    public async Task RenameSymbol_CrossProjectGenericExecutorPropertyCall_WithUnresolvedAsReceiver_RenamesMemberAccessReference()
+    {
+        var fixture = await TestUtilities.PrepareCrossProjectGenericExecutorPropertyFixtureAsync(TestOutputPath);
+        await TestUtilities.CreateTestFile(fixture.ExecutorFile, """
+using System;
+using System.Threading.Tasks;
+using Contracts;
+
+namespace Handlers;
+
+public interface IEventHandlerMethodExecutor
+{
+    Func<IMoEventHandler, object, Task> ExecutorAsync { get; }
+}
+
+public sealed class DistributedEventHandlerMethodExecutor<TEvent> : IEventHandlerMethodExecutor
+{
+    public Func<IMoEventHandler, object, Task> ExecutorAsync => (target, parameter) =>
+    {
+        if (parameter is TEvent eventData)
+        {
+            return target.As<IMoDistributedEventHandler<TEvent>>().HandleEventAsync(eventData);
+        }
+
+        return Task.CompletedTask;
+    };
+}
+""");
+
+        await LoadSolutionTool.LoadSolution(fixture.SolutionPath, null, CancellationToken.None);
+
+        var result = await RenameSymbolTool.RenameSymbol(
+            fixture.SolutionPath,
+            fixture.InterfaceFile,
+            "HandleEventAsync",
+            "ExecuteAsync",
+            line: 11,
+            column: 10);
+
+        Assert.Contains("Successfully renamed", result);
+        Assert.Contains("Task ExecuteAsync(TEvent eventData);", await File.ReadAllTextAsync(fixture.InterfaceFile));
+        Assert.Contains("Task ExecuteAsync(TEvent eto);", await File.ReadAllTextAsync(fixture.BaseFile));
+
+        var handlerContent = await File.ReadAllTextAsync(fixture.HandlerFile);
+        Assert.Contains("override Task ExecuteAsync(OrderCreated orderCreated)", handlerContent);
+        Assert.Contains("Task HandleEventAsync(FlightDto flight)", handlerContent);
+
+        Assert.Contains(
+            "target.As<IMoDistributedEventHandler<TEvent>>().ExecuteAsync(eventData)",
+            await File.ReadAllTextAsync(fixture.ExecutorFile));
+    }
+
+    [Fact]
+    public async Task RenameSymbol_CrossProjectGenericExecutorPropertyCall_WithPrefixNewName_DoesNotDoubleRenameDeclarations()
+    {
+        var fixture = await TestUtilities.PrepareCrossProjectGenericExecutorPropertyFixtureAsync(TestOutputPath);
+        await TestUtilities.CreateTestFile(fixture.ExecutorFile, """
+using System;
+using System.Threading.Tasks;
+using Contracts;
+
+namespace Handlers;
+
+public interface IEventHandlerMethodExecutor
+{
+    Func<IMoEventHandler, object, Task> ExecutorAsync { get; }
+}
+
+public sealed class DistributedEventHandlerMethodExecutor<TEvent> : IEventHandlerMethodExecutor
+{
+    public Func<IMoEventHandler, object, Task> ExecutorAsync => (target, parameter) =>
+    {
+        if (parameter is TEvent eventData)
+        {
+            return target.As<IMoDistributedEventHandler<TEvent>>().HandleEventAsync(eventData);
+        }
+
+        return Task.CompletedTask;
+    };
+}
+""");
+
+        await LoadSolutionTool.LoadSolution(fixture.SolutionPath, null, CancellationToken.None);
+
+        var result = await RenameSymbolTool.RenameSymbol(
+            fixture.SolutionPath,
+            fixture.InterfaceFile,
+            "HandleEventAsync",
+            "HandleEventAsyncCodexProbe",
+            line: 11,
+            column: 10);
+
+        Assert.Contains("Successfully renamed", result);
+        Assert.Contains("Task HandleEventAsyncCodexProbe(TEvent eventData);", await File.ReadAllTextAsync(fixture.InterfaceFile));
+        Assert.DoesNotContain("HandleEventAsyncCodexProbeCodexProbe", await File.ReadAllTextAsync(fixture.InterfaceFile));
+        Assert.Contains("Task HandleEventAsyncCodexProbe(TEvent eto);", await File.ReadAllTextAsync(fixture.BaseFile));
+        Assert.DoesNotContain("HandleEventAsyncCodexProbeCodexProbe", await File.ReadAllTextAsync(fixture.BaseFile));
+
+        var handlerContent = await File.ReadAllTextAsync(fixture.HandlerFile);
+        Assert.Contains("override Task HandleEventAsyncCodexProbe(OrderCreated orderCreated)", handlerContent);
+        Assert.Contains("Task HandleEventAsync(FlightDto flight)", handlerContent);
+
+        Assert.Contains(
+            "target.As<IMoDistributedEventHandler<TEvent>>().HandleEventAsyncCodexProbe(eventData)",
+            await File.ReadAllTextAsync(fixture.ExecutorFile));
+        Assert.DoesNotContain(
+            "HandleEventAsyncCodexProbeCodexProbe",
+            await File.ReadAllTextAsync(fixture.ExecutorFile));
     }
 
     private static int CountOccurrences(string text, string value)

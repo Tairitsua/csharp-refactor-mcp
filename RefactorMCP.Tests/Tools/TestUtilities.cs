@@ -15,6 +15,13 @@ public static class TestUtilities
         string UserHandlerFile,
         string ConsumerFile);
 
+    public sealed record CrossProjectGenericExecutorFixture(
+        string SolutionPath,
+        string InterfaceFile,
+        string BaseFile,
+        string HandlerFile,
+        string ExecutorFile);
+
     private static readonly string[] SolutionFileNames = ["RefactorMCP.slnx", "RefactorMCP.sln"];
     private static readonly string[] ExampleCodeRelativePaths =
     [
@@ -147,7 +154,7 @@ namespace Handlers;
 public abstract class OurDomainEventHandler<THandler, TEvent> : IMoDistributedEventHandler<TEvent>
     where THandler : OurDomainEventHandler<THandler, TEvent>
 {
-    public abstract Task HandleEventAsync(TEvent eventData);
+    public abstract Task HandleEventAsync(TEvent eto);
 }
 """);
 
@@ -165,7 +172,7 @@ namespace Handlers;
 
 public sealed class OrderHandler : OurDomainEventHandler<OrderHandler, OrderCreated>
 {
-    public override Task HandleEventAsync(OrderCreated eventData) => Task.CompletedTask;
+    public override Task HandleEventAsync(OrderCreated orderCreated) => Task.CompletedTask;
 }
 """);
 
@@ -176,7 +183,7 @@ namespace Handlers;
 
 public sealed class UserHandler : OurDomainEventHandler<UserHandler, UserCreated>
 {
-    public override Task HandleEventAsync(UserCreated eventData) => Task.CompletedTask;
+    public override Task HandleEventAsync(UserCreated userCreated) => Task.CompletedTask;
 }
 """);
 
@@ -208,6 +215,262 @@ public static class Dispatcher
             orderHandlerFile,
             userHandlerFile,
             consumerFile);
+    }
+
+    public static async Task<CrossProjectGenericExecutorFixture> PrepareCrossProjectGenericExecutorFixtureAsync(string destinationRoot)
+    {
+        var fixtureRoot = Path.Combine(destinationRoot, "CrossProjectGenericExecutorFixture");
+        var solutionName = "CrossProjectGenericExecutorFixture";
+        var contractsDirectory = Path.Combine(fixtureRoot, "Contracts");
+        var handlersDirectory = Path.Combine(fixtureRoot, "Handlers");
+
+        Directory.CreateDirectory(contractsDirectory);
+        Directory.CreateDirectory(handlersDirectory);
+
+        var contractsProjectPath = Path.Combine(contractsDirectory, "Contracts.csproj");
+        var handlersProjectPath = Path.Combine(handlersDirectory, "Handlers.csproj");
+        var interfaceFile = Path.Combine(contractsDirectory, "IMoDistributedEventHandler.cs");
+        var baseFile = Path.Combine(handlersDirectory, "OurEventHandler.cs");
+        var eventsFile = Path.Combine(handlersDirectory, "Events.cs");
+        var handlerFile = Path.Combine(handlersDirectory, "OrderHandler.cs");
+        var executorFile = Path.Combine(handlersDirectory, "EventHandlerMethodExecutor.cs");
+
+        await CreateTestFile(contractsProjectPath, """
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>
+""");
+
+        await CreateTestFile(handlersProjectPath, """
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>
+""");
+
+        await CreateTestFile(interfaceFile, """
+using System.Threading.Tasks;
+
+namespace Contracts;
+
+public interface IMoDistributedEventHandler<in TEvent>
+{
+    Task HandleEventAsync(TEvent eventData);
+}
+""");
+
+        await CreateTestFile(baseFile, """
+using System.Threading.Tasks;
+using Contracts;
+
+namespace Handlers;
+
+/// <summary>
+/// Inherit and implement <see cref="HandleEventAsync"/>.
+/// </summary>
+public abstract class OurDomainEventHandler<THandler, TEvent> : IMoDistributedEventHandler<TEvent>
+    where THandler : OurDomainEventHandler<THandler, TEvent>
+{
+    public abstract Task HandleEventAsync(TEvent eto);
+}
+""");
+
+        await CreateTestFile(eventsFile, """
+namespace Handlers;
+
+public sealed record OrderCreated;
+public sealed record FlightDto;
+""");
+
+        await CreateTestFile(handlerFile, """
+using System.Threading.Tasks;
+
+namespace Handlers;
+
+public sealed class OrderHandler : OurDomainEventHandler<OrderHandler, OrderCreated>
+{
+    public override Task HandleEventAsync(OrderCreated orderCreated) => Task.CompletedTask;
+
+    public Task HandleEventAsync(FlightDto flight) => Task.CompletedTask;
+}
+""");
+
+        await CreateTestFile(executorFile, """
+using System;
+using System.Threading.Tasks;
+using Contracts;
+
+namespace Handlers;
+
+public static class CastExtensions
+{
+    public static T As<T>(this object value) => throw new NotSupportedException();
+}
+
+public static class EventHandlerMethodExecutor<TEvent>
+{
+    public static Task Dispatch(object target, TEvent eventData)
+        => target.As<IMoDistributedEventHandler<TEvent>>().HandleEventAsync(eventData);
+}
+""");
+
+        await RunDotNetAsync(fixtureRoot, "new", "sln", "--name", solutionName);
+
+        var solutionPath = Directory.GetFiles(fixtureRoot, "*.sln*", SearchOption.TopDirectoryOnly)[0];
+        await RunDotNetAsync(fixtureRoot, "sln", solutionPath, "add", contractsProjectPath);
+        await RunDotNetAsync(fixtureRoot, "sln", solutionPath, "add", handlersProjectPath);
+        await RunDotNetAsync(fixtureRoot, "add", handlersProjectPath, "reference", contractsProjectPath);
+        await RunDotNetAsync(fixtureRoot, "build", "-nodeReuse:false", solutionPath);
+
+        return new CrossProjectGenericExecutorFixture(
+            solutionPath,
+            interfaceFile,
+            baseFile,
+            handlerFile,
+            executorFile);
+    }
+
+    public static async Task<CrossProjectGenericExecutorFixture> PrepareCrossProjectGenericExecutorPropertyFixtureAsync(string destinationRoot)
+    {
+        var fixtureRoot = Path.Combine(destinationRoot, "CrossProjectGenericExecutorPropertyFixture");
+        var solutionName = "CrossProjectGenericExecutorPropertyFixture";
+        var contractsDirectory = Path.Combine(fixtureRoot, "Contracts");
+        var handlersDirectory = Path.Combine(fixtureRoot, "Handlers");
+
+        Directory.CreateDirectory(contractsDirectory);
+        Directory.CreateDirectory(handlersDirectory);
+
+        var contractsProjectPath = Path.Combine(contractsDirectory, "Contracts.csproj");
+        var handlersProjectPath = Path.Combine(handlersDirectory, "Handlers.csproj");
+        var interfaceFile = Path.Combine(contractsDirectory, "IMoDistributedEventHandler.cs");
+        var baseFile = Path.Combine(handlersDirectory, "OurEventHandler.cs");
+        var eventsFile = Path.Combine(handlersDirectory, "Events.cs");
+        var handlerFile = Path.Combine(handlersDirectory, "OrderHandler.cs");
+        var executorFile = Path.Combine(handlersDirectory, "EventHandlerMethodExecutor.cs");
+
+        await CreateTestFile(contractsProjectPath, """
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>
+""");
+
+        await CreateTestFile(handlersProjectPath, """
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>
+""");
+
+        await CreateTestFile(interfaceFile, """
+using System.Threading.Tasks;
+
+namespace Contracts;
+
+public interface IMoEventHandler
+{
+}
+
+public interface IMoDistributedEventHandler<in TEvent> : IMoEventHandler
+{
+    Task HandleEventAsync(TEvent eventData);
+}
+""");
+
+        await CreateTestFile(baseFile, """
+using System.Threading.Tasks;
+using Contracts;
+
+namespace Handlers;
+
+/// <summary>
+/// Inherit and implement <see cref="HandleEventAsync"/>.
+/// </summary>
+public abstract class OurDomainEventHandler<THandler, TEvent> : IMoDistributedEventHandler<TEvent>
+    where THandler : OurDomainEventHandler<THandler, TEvent>
+{
+    public abstract Task HandleEventAsync(TEvent eto);
+}
+""");
+
+        await CreateTestFile(eventsFile, """
+namespace Handlers;
+
+public sealed record OrderCreated;
+public sealed record FlightDto;
+""");
+
+        await CreateTestFile(handlerFile, """
+using System.Threading.Tasks;
+
+namespace Handlers;
+
+public sealed class OrderHandler : OurDomainEventHandler<OrderHandler, OrderCreated>
+{
+    public override Task HandleEventAsync(OrderCreated orderCreated) => Task.CompletedTask;
+
+    public Task HandleEventAsync(FlightDto flight) => Task.CompletedTask;
+}
+""");
+
+        await CreateTestFile(executorFile, """
+using System;
+using System.Threading.Tasks;
+using Contracts;
+
+namespace Handlers;
+
+public interface IEventHandlerMethodExecutor
+{
+    Func<IMoEventHandler, object, Task> ExecutorAsync { get; }
+}
+
+public static class CastExtensions
+{
+    public static T As<T>(this object value) => throw new NotSupportedException();
+}
+
+public sealed class DistributedEventHandlerMethodExecutor<TEvent> : IEventHandlerMethodExecutor
+{
+    public Func<IMoEventHandler, object, Task> ExecutorAsync => (target, parameter) =>
+    {
+        if (parameter is TEvent eventData)
+        {
+            return target.As<IMoDistributedEventHandler<TEvent>>().HandleEventAsync(eventData);
+        }
+
+        return Task.CompletedTask;
+    };
+}
+""");
+
+        await RunDotNetAsync(fixtureRoot, "new", "sln", "--name", solutionName);
+
+        var solutionPath = Directory.GetFiles(fixtureRoot, "*.sln*", SearchOption.TopDirectoryOnly)[0];
+        await RunDotNetAsync(fixtureRoot, "sln", solutionPath, "add", contractsProjectPath);
+        await RunDotNetAsync(fixtureRoot, "sln", solutionPath, "add", handlersProjectPath);
+        await RunDotNetAsync(fixtureRoot, "add", handlersProjectPath, "reference", contractsProjectPath);
+        await RunDotNetAsync(fixtureRoot, "build", "-nodeReuse:false", solutionPath);
+
+        return new CrossProjectGenericExecutorFixture(
+            solutionPath,
+            interfaceFile,
+            baseFile,
+            handlerFile,
+            executorFile);
     }
 
     private static void CopyDirectory(string sourceDirectory, string destinationDirectory)

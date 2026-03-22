@@ -1,6 +1,8 @@
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.FindSymbols;
 using ModelContextProtocol;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -32,6 +34,17 @@ internal static class SymbolResolution
                 var symbolAtPosition = GetSymbolFromNode(semanticModel, root.FindToken(position).Parent);
                 if (symbolAtPosition != null && symbolAtPosition.Name == name)
                 {
+                    DiagnosticTrace.Log(
+                        "SymbolResolution",
+                        "Resolved symbol from position",
+                        new
+                        {
+                            document = document.FilePath,
+                            name,
+                            line,
+                            column,
+                            symbol = symbolAtPosition.ToDisplayString()
+                        });
                     return symbolAtPosition;
                 }
             }
@@ -53,14 +66,30 @@ internal static class SymbolResolution
             return null;
         }
 
-        return await SelectBestCandidateAsync(document, name, declarations, cancellationToken);
+        var selectedDeclaration = await SelectBestCandidateAsync(document, name, declarations, cancellationToken);
+        DiagnosticTrace.Log(
+            "SymbolResolution",
+            "Resolved symbol from declarations",
+            new
+            {
+                document = document.FilePath,
+                name,
+                symbol = selectedDeclaration.ToDisplayString(),
+                declarationCount = declarations.Length
+            });
+        return selectedDeclaration;
     }
 
     internal static ISymbol? GetSymbolFromNode(SemanticModel semanticModel, SyntaxNode? node)
     {
         while (node != null)
         {
-            var symbol = semanticModel.GetDeclaredSymbol(node) ?? semanticModel.GetSymbolInfo(node).Symbol;
+            var symbol = ResolveReferencedSymbol(semanticModel, node);
+            if (symbol == null)
+            {
+                symbol = semanticModel.GetDeclaredSymbol(node);
+            }
+
             if (symbol != null)
             {
                 return symbol;
@@ -70,6 +99,283 @@ internal static class SymbolResolution
         }
 
         return null;
+    }
+
+    private static ISymbol? ResolveReferencedSymbol(
+        SemanticModel semanticModel,
+        SyntaxNode node)
+    {
+        foreach (var lookupNode in GetSemanticLookupNodes(node))
+        {
+            var resolvedSymbol = ResolveSymbolFromInfoOrReceiverType(semanticModel, lookupNode);
+            if (resolvedSymbol != null)
+            {
+                return resolvedSymbol;
+            }
+        }
+
+        return null;
+    }
+
+    private static ISymbol? SelectBestCandidateSymbol(IEnumerable<ISymbol> candidateSymbols) =>
+        candidateSymbols
+            .OrderBy(GetCandidatePriority)
+            .ThenBy(candidate => candidate.ToDisplayString(), StringComparer.Ordinal)
+            .FirstOrDefault();
+
+    private static IEnumerable<SyntaxNode> GetSemanticLookupNodes(SyntaxNode node)
+    {
+        yield return node;
+
+        if (node.Parent is MemberAccessExpressionSyntax memberAccess && memberAccess.Name == node)
+        {
+            yield return memberAccess;
+
+            if (memberAccess.Parent is InvocationExpressionSyntax invocation && invocation.Expression == memberAccess)
+            {
+                yield return invocation;
+            }
+
+            yield break;
+        }
+
+        if (node.Parent is MemberBindingExpressionSyntax memberBinding && memberBinding.Name == node)
+        {
+            yield return memberBinding;
+
+            if (memberBinding.Parent is InvocationExpressionSyntax invocation && invocation.Expression == memberBinding)
+            {
+                yield return invocation;
+            }
+
+            yield break;
+        }
+
+        if (node.Parent is QualifiedNameSyntax qualifiedName && qualifiedName.Right == node)
+        {
+            yield return qualifiedName;
+            yield break;
+        }
+
+        if (node.Parent is AliasQualifiedNameSyntax aliasQualifiedName && aliasQualifiedName.Name == node)
+        {
+            yield return aliasQualifiedName;
+        }
+    }
+
+    private static ISymbol? ResolveSymbolFromInfoOrReceiverType(
+        SemanticModel semanticModel,
+        SyntaxNode node)
+    {
+        var symbolInfo = semanticModel.GetSymbolInfo(node);
+        var symbol = symbolInfo.Symbol ?? SelectBestCandidateSymbol(symbolInfo.CandidateSymbols);
+        symbol = symbol is IAliasSymbol aliasSymbol
+            ? aliasSymbol.Target
+            : symbol;
+
+        return symbol ?? ResolveSymbolFromReceiverType(semanticModel, node);
+    }
+
+    private static ISymbol? ResolveSymbolFromReceiverType(
+        SemanticModel semanticModel,
+        SyntaxNode node)
+    {
+        return node switch
+        {
+            IdentifierNameSyntax identifierName when identifierName.Parent is MemberAccessExpressionSyntax memberAccess && memberAccess.Name == identifierName =>
+                ResolveMemberAccessSymbol(semanticModel, memberAccess),
+            IdentifierNameSyntax identifierName when identifierName.Parent is MemberBindingExpressionSyntax memberBinding && memberBinding.Name == identifierName =>
+                ResolveMemberBindingSymbol(semanticModel, memberBinding),
+            MemberAccessExpressionSyntax memberAccess => ResolveMemberAccessSymbol(semanticModel, memberAccess),
+            MemberBindingExpressionSyntax memberBinding => ResolveMemberBindingSymbol(semanticModel, memberBinding),
+            InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax memberAccess } => ResolveMemberAccessSymbol(semanticModel, memberAccess),
+            InvocationExpressionSyntax { Expression: MemberBindingExpressionSyntax memberBinding } => ResolveMemberBindingSymbol(semanticModel, memberBinding),
+            _ => null
+        };
+    }
+
+    private static ISymbol? ResolveMemberAccessSymbol(
+        SemanticModel semanticModel,
+        MemberAccessExpressionSyntax memberAccess)
+    {
+        var receiverType = ResolveReceiverType(semanticModel, memberAccess.Expression);
+        return ResolveMemberFromReceiverType(
+            receiverType,
+            memberAccess.Name.Identifier.ValueText,
+            memberAccess.Parent as InvocationExpressionSyntax);
+    }
+
+    private static ISymbol? ResolveMemberBindingSymbol(
+        SemanticModel semanticModel,
+        MemberBindingExpressionSyntax memberBinding)
+    {
+        if (memberBinding.Parent?.Parent is not ConditionalAccessExpressionSyntax conditionalAccess)
+        {
+            return null;
+        }
+
+        var receiverType = ResolveReceiverType(semanticModel, conditionalAccess.Expression);
+        return ResolveMemberFromReceiverType(
+            receiverType,
+            memberBinding.Name.Identifier.ValueText,
+            memberBinding.Parent as InvocationExpressionSyntax);
+    }
+
+    private static ITypeSymbol? ResolveReceiverType(
+        SemanticModel semanticModel,
+        ExpressionSyntax expression)
+    {
+        var typeInfo = semanticModel.GetTypeInfo(expression);
+        if (CanUseReceiverType(typeInfo.Type))
+        {
+            return typeInfo.Type;
+        }
+
+        if (CanUseReceiverType(typeInfo.ConvertedType))
+        {
+            return typeInfo.ConvertedType;
+        }
+
+        return ResolveReceiverTypeFromSyntaxHint(semanticModel, expression);
+    }
+
+    private static ITypeSymbol? ResolveReceiverTypeFromSyntaxHint(
+        SemanticModel semanticModel,
+        ExpressionSyntax expression)
+    {
+        return expression switch
+        {
+            ParenthesizedExpressionSyntax parenthesized => ResolveReceiverType(semanticModel, parenthesized.Expression),
+            CastExpressionSyntax castExpression => ResolveTypeSyntax(semanticModel, castExpression.Type),
+            InvocationExpressionSyntax invocation => ResolveReceiverTypeFromInvocationHint(semanticModel, invocation),
+            _ => null
+        };
+    }
+
+    private static ITypeSymbol? ResolveReceiverTypeFromInvocationHint(
+        SemanticModel semanticModel,
+        InvocationExpressionSyntax invocation)
+    {
+        return TryGetCastLikeTypeArgument(invocation.Expression, out var typeSyntax)
+            ? ResolveTypeSyntax(semanticModel, typeSyntax)
+            : null;
+    }
+
+    private static bool TryGetCastLikeTypeArgument(
+        ExpressionSyntax expression,
+        out TypeSyntax typeSyntax)
+    {
+        switch (expression)
+        {
+            case GenericNameSyntax genericName when IsCastLikeGenericMethod(genericName):
+                typeSyntax = genericName.TypeArgumentList.Arguments[0];
+                return true;
+            case MemberAccessExpressionSyntax { Name: GenericNameSyntax genericName } when IsCastLikeGenericMethod(genericName):
+                typeSyntax = genericName.TypeArgumentList.Arguments[0];
+                return true;
+            case MemberBindingExpressionSyntax { Name: GenericNameSyntax genericName } when IsCastLikeGenericMethod(genericName):
+                typeSyntax = genericName.TypeArgumentList.Arguments[0];
+                return true;
+            default:
+                typeSyntax = null!;
+                return false;
+        }
+    }
+
+    private static bool IsCastLikeGenericMethod(GenericNameSyntax genericName) =>
+        string.Equals(genericName.Identifier.ValueText, "As", StringComparison.Ordinal) &&
+        genericName.TypeArgumentList.Arguments.Count == 1;
+
+    private static ITypeSymbol? ResolveTypeSyntax(
+        SemanticModel semanticModel,
+        TypeSyntax typeSyntax)
+    {
+        var typeInfo = semanticModel.GetTypeInfo(typeSyntax);
+        if (typeInfo.Type != null && typeInfo.Type.TypeKind != TypeKind.Error)
+        {
+            return typeInfo.Type;
+        }
+
+        if (typeInfo.ConvertedType != null && typeInfo.ConvertedType.TypeKind != TypeKind.Error)
+        {
+            return typeInfo.ConvertedType;
+        }
+
+        var symbolInfo = semanticModel.GetSymbolInfo(typeSyntax);
+        return symbolInfo.Symbol as ITypeSymbol ??
+               symbolInfo.CandidateSymbols.OfType<ITypeSymbol>().FirstOrDefault();
+    }
+
+    private static bool CanUseReceiverType(ITypeSymbol? type) =>
+        type != null &&
+        type.TypeKind is not TypeKind.Error &&
+        type.TypeKind is not TypeKind.Dynamic;
+
+    private static ISymbol? ResolveMemberFromReceiverType(
+        ITypeSymbol? receiverType,
+        string memberName,
+        InvocationExpressionSyntax? invocation)
+    {
+        if (receiverType == null)
+        {
+            return null;
+        }
+
+        var argumentCount = invocation?.ArgumentList.Arguments.Count;
+        var candidateMembers = EnumerateCandidateTypes(receiverType)
+            .SelectMany(type => type.GetMembers(memberName))
+            .Where(member => member.Name == memberName)
+            .ToArray();
+
+        if (candidateMembers.Length == 0)
+        {
+            return null;
+        }
+
+        if (argumentCount.HasValue)
+        {
+            var methodCandidate = candidateMembers
+                .OfType<IMethodSymbol>()
+                .Where(method => method.Parameters.Length == argumentCount.Value)
+                .OrderBy(GetCandidatePriority)
+                .ThenBy(candidate => candidate.ToDisplayString(), StringComparer.Ordinal)
+                .FirstOrDefault();
+            if (methodCandidate != null)
+            {
+                return methodCandidate;
+            }
+        }
+
+        return candidateMembers
+            .OrderBy(GetCandidatePriority)
+            .ThenBy(candidate => candidate.ToDisplayString(), StringComparer.Ordinal)
+            .FirstOrDefault();
+    }
+
+    private static IEnumerable<INamedTypeSymbol> EnumerateCandidateTypes(ITypeSymbol receiverType)
+    {
+        if (receiverType is not INamedTypeSymbol namedType)
+        {
+            yield break;
+        }
+
+        var seenTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+
+        for (var current = namedType; current != null; current = current.BaseType)
+        {
+            if (seenTypes.Add(current))
+            {
+                yield return current;
+            }
+        }
+
+        foreach (var interfaceType in namedType.AllInterfaces)
+        {
+            if (seenTypes.Add(interfaceType))
+            {
+                yield return interfaceType;
+            }
+        }
     }
 
     private static IReadOnlyList<SymbolCandidate> CollectCandidates(

@@ -49,11 +49,23 @@ public static class FindUsagesTool
             }
 
             symbol = await SymbolClosure.CanonicalizeAsync(symbol, symbolSolution, cancellationToken);
+            DiagnosticTrace.Log(
+                "FindUsages",
+                "Resolved canonical symbol",
+                new
+                {
+                    filePath,
+                    symbolName,
+                    line,
+                    column,
+                    symbol = symbol.ToDisplayString()
+                });
 
-            var referencedSymbols = await FindReferencesAcrossClosureAsync(symbol, symbolSolution, cancellationToken);
+            var closure = await SymbolClosure.GetRelatedSymbolsAsync(symbol, symbolSolution, cancellationToken);
+            var referencedSymbols = await FindReferencesAcrossClosureAsync(closure, symbolSolution, cancellationToken);
             var sourceTextCache = new Dictionary<string, SourceText>(StringComparer.OrdinalIgnoreCase);
             var declarations = await CollectDeclarationLocationsAsync(
-                referencedSymbols,
+                closure,
                 symbolSolution,
                 sourceTextCache,
                 cancellationToken);
@@ -62,6 +74,24 @@ public static class FindUsagesTool
                 symbolSolution,
                 sourceTextCache,
                 cancellationToken);
+            references = await MergeSemanticFallbackReferencesAsync(
+                references,
+                symbolSolution,
+                closure,
+                symbolName,
+                sourceTextCache,
+                cancellationToken);
+            DiagnosticTrace.Log(
+                "FindUsages",
+                "Collected usages",
+                new
+                {
+                    symbol = symbol.ToDisplayString(),
+                    closureCount = closure.Count,
+                    referencedSymbolCount = referencedSymbols.Count,
+                    declarationCount = declarations.Count,
+                    referenceCount = references.Count
+                });
 
             var orderedReferences = references
                 .OrderBy(location => RefactoringHelpers.NormalizePathForComparison(location.FilePath))
@@ -91,12 +121,11 @@ public static class FindUsagesTool
     }
 
     private static async Task<IReadOnlyList<ReferencedSymbol>> FindReferencesAcrossClosureAsync(
-        ISymbol symbol,
+        IReadOnlyCollection<ISymbol> closure,
         Solution solution,
         CancellationToken cancellationToken)
     {
         var referencedSymbols = new List<ReferencedSymbol>();
-        var closure = await SymbolClosure.GetRelatedSymbolsAsync(symbol, solution, cancellationToken);
 
         foreach (var closureSymbol in closure)
         {
@@ -108,7 +137,7 @@ public static class FindUsagesTool
     }
 
     private static async Task<IReadOnlyList<FindUsageLocation>> CollectDeclarationLocationsAsync(
-        IEnumerable<ReferencedSymbol> referencedSymbols,
+        IEnumerable<ISymbol> closure,
         Solution solution,
         Dictionary<string, SourceText> sourceTextCache,
         CancellationToken cancellationToken)
@@ -116,9 +145,9 @@ public static class FindUsagesTool
         var seenLocations = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var declarations = new List<FindUsageLocation>();
 
-        foreach (var referencedSymbol in referencedSymbols)
+        foreach (var symbol in closure)
         {
-            foreach (var location in referencedSymbol.Definition.Locations.Where(location => location.IsInSource))
+            foreach (var location in symbol.Locations.Where(location => location.IsInSource))
             {
                 var usage = await TryCreateLocationAsync(location, solution, sourceTextCache, cancellationToken);
                 if (usage == null || !seenLocations.Add(CreateLocationKey(usage)))
@@ -167,6 +196,60 @@ public static class FindUsagesTool
         }
 
         return references;
+    }
+
+    private static async Task<IReadOnlyList<FindUsageLocation>> MergeSemanticFallbackReferencesAsync(
+        IReadOnlyList<FindUsageLocation> references,
+        Solution solution,
+        IReadOnlyCollection<ISymbol> closure,
+        string symbolName,
+        Dictionary<string, SourceText> sourceTextCache,
+        CancellationToken cancellationToken)
+    {
+        var seenLocations = new HashSet<string>(
+            references.Select(CreateLocationKey),
+            StringComparer.OrdinalIgnoreCase);
+        var mergedReferences = references.ToList();
+        var semanticMatches = await SemanticSymbolSearch.FindMatchesAsync(
+            solution,
+            closure,
+            symbolName,
+            cancellationToken);
+
+        foreach (var match in semanticMatches.Where(match => !match.IsDeclaration))
+        {
+            if (await IsDocumentationCommentReferenceAsync(
+                    match.Location,
+                    new Dictionary<SyntaxTree, SyntaxNode>(),
+                    cancellationToken))
+            {
+                continue;
+            }
+
+            var usage = await TryCreateLocationAsync(
+                match.Location,
+                solution,
+                sourceTextCache,
+                cancellationToken);
+            if (usage == null || !seenLocations.Add(CreateLocationKey(usage)))
+            {
+                continue;
+            }
+
+            mergedReferences.Add(usage);
+        }
+
+        DiagnosticTrace.Log(
+            "FindUsages",
+            "Merged semantic fallback references",
+            new
+            {
+                symbolName,
+                originalReferenceCount = references.Count,
+                mergedReferenceCount = mergedReferences.Count
+            });
+
+        return mergedReferences;
     }
 
     private static async Task<bool> IsDocumentationCommentReferenceAsync(
